@@ -1,0 +1,16 @@
+# Archive publiée (BigWigsMods/packager) : ce qui part sur GitHub Releases et CurseForge.
+# Les dossiers du .gitignore (DungeonJournal, dev/apercus...) et les fichiers « .xxx » sont déjà exclus.
+package-as: Platyplus
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - dev
+  - docs
+  - Traducteur
+  - README.md
+  - README.fr.md
+  - DungeonJournalGlue.lua
+  - Licenses/DungeonJournal.txt

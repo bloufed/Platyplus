@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="disc" cx="0.38" cy="0.30" r="0.85">
+      <stop offset="0" stop-color="#2a2f3b"/>
+      <stop offset="0.55" stop-color="#171a21"/>
+      <stop offset="1" stop-color="#0b0d11"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#7fe2ff"/>
+      <stop offset="0.45" stop-color="#33ccff"/>
+      <stop offset="1" stop-color="#15618c"/>
+    </linearGradient>
+    <linearGradient id="ringShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0.1" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#6fe0ff"/>
+      <stop offset="0.45" stop-color="#2eb8ea"/>
+      <stop offset="1" stop-color="#145f96"/>
+    </linearGradient>
+    <linearGradient id="bill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a93a8"/>
+      <stop offset="0.45" stop-color="#4c5465"/>
+      <stop offset="1" stop-color="#262b36"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b7488"/>
+      <stop offset="1" stop-color="#22262f"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="softer" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter>
+    <filter id="tiny" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="14"/></filter>
+    <clipPath id="clipDisc"><circle cx="512" cy="512" r="440"/></clipPath>
+
+    <!-- silhouette : bec vers la gauche, nage -->
+    <path id="bodyPath" d="M 372 470 C 380 418 424 372 494 362 C 556 354 602 372 632 396 C 700 384 798 418 842 492 C 876 556 836 640 752 660 C 660 690 540 692 462 652 C 420 632 394 612 384 590 C 372 548 368 508 372 470 Z"/>
+    <path id="billPath" d="M 404 466 C 310 450 190 452 120 486 C 82 504 82 568 130 590 C 200 614 310 616 408 604 Z"/>
+    <path id="billTop" d="M 404 466 C 310 450 190 452 120 486 C 98 496 96 528 118 540 C 200 556 310 552 408 540 Z"/>
+    <linearGradient id="billTopG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b9c2d4"/>
+      <stop offset="1" stop-color="#7d8699"/>
+    </linearGradient>
+    <path id="tailPath" d="M 772 552 C 846 500 930 458 976 480 C 1002 494 990 532 950 556 C 898 590 826 602 766 592 Z"/>
+    <path id="footPath" d="M 440 636 C 428 668 446 694 486 696 C 520 698 548 684 556 664 L 548 640 Z"/>
+    <clipPath id="clipBody"><use href="#bodyPath"/></clipPath>
+    <clipPath id="clipBill"><use href="#billPath"/></clipPath>
+    <clipPath id="clipTail"><use href="#tailPath"/></clipPath>
+  </defs>
+
+  <circle cx="512" cy="526" r="468" fill="#000" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="512" cy="512" r="470" fill="url(#ring)"/>
+  <circle cx="512" cy="512" r="470" fill="url(#ringShade)"/>
+  <circle cx="512" cy="512" r="440" fill="url(#disc)"/>
+  <circle cx="512" cy="512" r="440" fill="none" stroke="#000" stroke-opacity="0.55" stroke-width="6"/>
+  <circle cx="512" cy="512" r="432" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2"/>
+  <g clip-path="url(#clipDisc)">
+    <ellipse cx="512" cy="110" rx="330" ry="90" fill="#33ccff" opacity="0.18" filter="url(#softer)"/>
+  </g>
+
+  <!-- ombre portée -->
+  <g opacity="0.6" filter="url(#soft)" transform="translate(0 24)">
+    <use href="#tailPath" fill="#000"/><use href="#billPath" fill="#000"/><use href="#bodyPath" fill="#000"/>
+  </g>
+
+  <!-- queue -->
+  <use href="#tailPath" fill="url(#tail)"/>
+  <g clip-path="url(#clipTail)">
+    <path d="M 780 548 C 850 498 930 462 974 480" fill="none" stroke="#c3cbdb" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="880" cy="600" rx="140" ry="40" fill="#000" opacity="0.35" filter="url(#tiny)"/>
+  </g>
+
+  <!-- patte avant -->
+  <use href="#footPath" fill="#2a2f3a"/>
+  <path d="M 446 690 C 470 702 510 704 540 688" fill="none" stroke="#6b7488" stroke-opacity="0.5" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- bec -->
+  <use href="#billPath" fill="url(#bill)"/>
+  <g clip-path="url(#clipBill)">
+    <use href="#billTop" fill="url(#billTopG)"/>
+    <path d="M 118 540 C 200 556 310 552 408 540" fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="9" filter="url(#tiny)"/>
+    <path d="M 404 466 C 310 450 190 452 120 486" fill="none" stroke="#eef3fa" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="280" cy="614" rx="190" ry="26" fill="#000" opacity="0.45" filter="url(#tiny)"/>
+    <ellipse cx="400" cy="540" rx="18" ry="80" fill="#000" opacity="0.4" filter="url(#tiny)"/>
+    <ellipse cx="150" cy="496" rx="8" ry="5" fill="#0a0c10" opacity="0.7"/>
+    <ellipse cx="172" cy="490" rx="8" ry="5" fill="#0a0c10" opacity="0.7"/>
+  </g>
+
+  <!-- corps -->
+  <use href="#bodyPath" fill="url(#body)"/>
+  <g clip-path="url(#clipBody)">
+    <ellipse cx="520" cy="372" rx="150" ry="36" fill="#ffffff" opacity="0.28" filter="url(#soft)"/>
+    <ellipse cx="760" cy="430" rx="110" ry="30" fill="#ffffff" opacity="0.16" filter="url(#soft)"/>
+    <ellipse cx="600" cy="700" rx="280" ry="70" fill="#07253c" opacity="0.65" filter="url(#soft)"/>
+    <path d="M 384 590 C 372 548 368 508 372 470" fill="none" stroke="#07253c" stroke-opacity="0.55" stroke-width="12" filter="url(#tiny)"/>
+    <path d="M 632 396 C 700 384 798 418 842 492" fill="none" stroke="#bff0ff" stroke-opacity="0.55" stroke-width="5" filter="url(#tiny)"/>
+  </g>
+  <circle cx="468" cy="446" r="19" fill="#06080c"/>
+  <circle cx="475" cy="439" r="6" fill="#ffffff" opacity="0.9"/>
+
+  <!-- plus -->
+  <g transform="translate(790 250)">
+    <path d="M -60 0 H 60 M 0 -60 V 60" stroke="#33ccff" stroke-width="30" stroke-linecap="round" opacity="0.7" filter="url(#glow)"/>
+    <path d="M -56 0 H 56 M 0 -56 V 56" stroke="#dff6ff" stroke-width="22" stroke-linecap="round"/>
+  </g>
+</svg>

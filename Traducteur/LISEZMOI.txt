@@ -1,0 +1,66 @@
+TRADUCTEUR PLATYPLUS
+====================
+
+Traduit en français ce que les joueurs étrangers écrivent dans le chat, et t'aide à leur
+répondre dans leur langue. La traduction est faite par une petite IA qui tourne sur ton PC
+(Ollama + le modèle gemma3:4b) : rien ne part sur Internet.
+
+UNE SEULE FOIS
+--------------
+Dans le jeu, tape :  /pp trad
+(ou coche « Lien [FR] pour traduire » dans /pp, onglet Chat).
+
+À CHAQUE PARTIE
+---------------
+Double-clic sur « Traducteur Platyplus » (raccourci sur le bureau), avant ou après avoir lancé le jeu.
+- Une petite fenêtre s'affiche par-dessus le jeu : les traductions s'y affichent.
+
+TRADUIRE UN MESSAGE REÇU
+------------------------
+Les messages qui n'ont pas l'air écrits en français ont un petit lien [FR] au bout.
+Clique dessus : la traduction s'affiche dans la fenêtre du traducteur.
+
+Comment ça passe : un add-on ne peut parler à aucun programme. Au clic, Platyplus dessine pendant une
+demi-seconde une fine bande de carrés de couleur tout en haut à gauche de l'écran (le message codé) ;
+le traducteur regarde ce coin de l'écran et la lit. Rien n'est envoyé au jeu.
+Si ça ne passe pas : clic DROIT sur [FR], une petite zone s'ouvre avec le message sélectionné, Ctrl+C,
+et la traduction s'affiche aussi.
+- Elle ne s'affiche que quand le jeu est devant, et se ferme toute seule quand tu quittes le jeu
+  (elle libère alors la carte graphique).
+- Le jeu doit être en mode « Fenêtré (plein écran) » (le mode plein écran exclusif cache la fenêtre).
+
+RÉPONDRE DANS UNE AUTRE LANGUE
+------------------------------
+1. Dans le jeu, appuie sur Ctrl+Entrée (ou clique sur un message dans la fenêtre du traducteur).
+2. Écris en français, puis Entrée. La langue choisie est celle du dernier joueur étranger
+   (Tab pour en changer). La traduction est copiée.
+3. Dans le chat du jeu : Entrée, Ctrl+V, Entrée.
+   (R puis Ctrl+V pour répondre à un chuchotement.)
+Le traducteur ne tape jamais à ta place dans le jeu : c'est toi qui colles et qui envoies.
+
+LA FENÊTRE
+----------
+- Elle disparaît après 20 s sans traduction ni envoi, et revient dès qu'il y a du nouveau (clic sur [FR],
+  Ctrl+Entrée, traduction). Elle reste tant que la souris est dessus. Menu ⚙ pour la garder toujours.
+- Tire le bandeau pour la déplacer, le coin ◢ pour la redimensionner.
+- ⏸ : pause   ⚙ : réglages (canaux à traduire, taille, opacité, langue, modèle d'IA)
+  ▾ : replier   ✕ : quitter
+- Modèle d'IA (menu ⚙) : gemma3:4b est le plus léger (environ 0,6 s par message, 3 Go de mémoire vidéo) ;
+  gemma3:12b comprend mieux le jargon (environ 1 s par message, 8 Go).
+
+LE LEXIQUE
+----------
+lexique.txt donne à l'IA le sens des abréviations (WC = Cavernes des lamentations, oom = plus de mana...).
+Tu peux y ajouter tes lignes (menu ⚙ > Modifier le lexique, puis Recharger le lexique).
+
+EN CAS DE SOUCI
+---------------
+- « en attente du chat » : tape /pp trad dans le jeu.
+- Pas de lien [FR] : /reload dans le jeu, et vérifie que /pp trad est sur ON. Les messages protégés
+  par le jeu (en instance, pendant un combat de boss) n'en ont pas.
+- Un clic sur [FR] ne traduit rien : vérifie que le traducteur tourne (sa fenêtre revient quand tu
+  passes la souris en bas à gauche), puis tape /pp trad test dans le jeu : une bande d'essai reste 8 s
+  et le traducteur doit afficher sa traduction. Sinon, le dossier diagnostic\ garde ce qu'il a vu
+  (bande.log, images) et traducteur.log dit quand et pourquoi le traducteur s'est fermé.
+- Le traducteur s'arrête sur une erreur : le détail est dans erreurs.log, dans ce dossier.
+- Les autres réglages sont dans reglages.json (raccourci, langues, noms à ignorer...).

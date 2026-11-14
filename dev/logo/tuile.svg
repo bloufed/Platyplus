@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Tuile, variante A : gros plus or qui déborde du coin haut droit (la tuile est entaillée autour) -->
+  <defs>
+    <linearGradient id="aTile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6bdcff"/>
+      <stop offset="0.5" stop-color="#33ccff"/>
+      <stop offset="1" stop-color="#1aa2e2"/>
+    </linearGradient>
+    <linearGradient id="aBill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe07a"/>
+      <stop offset="0.5" stop-color="#ffcf3a"/>
+      <stop offset="1" stop-color="#f5a81a"/>
+    </linearGradient>
+    <clipPath id="aClip"><rect x="64" y="64" width="896" height="896" rx="236"/></clipPath>
+    <path id="aBillShape" d="M 40 730 C 40 626 250 580 512 580 C 774 580 984 626 984 730 V 1000 H 40 Z"/>
+    <mask id="aCut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M 864 52 V 260 M 760 156 H 968" fill="none" stroke="#000" stroke-width="140" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g mask="url(#aCut)">
+    <g transform="translate(40 136) scale(0.9464) translate(-64 -64)">
+      <rect x="64" y="64" width="896" height="896" rx="236" fill="url(#aTile)"/>
+      <g clip-path="url(#aClip)">
+        <use href="#aBillShape" fill="#0b5f93" opacity="0.40" transform="translate(0 -24)"/>
+        <use href="#aBillShape" fill="url(#aBill)"/>
+      </g>
+      <circle cx="340" cy="420" r="52" fill="#0b1622"/>
+      <circle cx="684" cy="420" r="52" fill="#0b1622"/>
+      <circle cx="358" cy="402" r="16" fill="#ffffff"/>
+      <circle cx="702" cy="402" r="16" fill="#ffffff"/>
+      <ellipse cx="444" cy="700" rx="27" ry="17" fill="#5a3a06"/>
+      <ellipse cx="580" cy="700" rx="27" ry="17" fill="#5a3a06"/>
+    </g>
+  </g>
+  <path d="M 864 52 V 260 M 760 156 H 968" fill="none" stroke="#ffcf3a" stroke-width="66" stroke-linecap="round"/>
+</svg>

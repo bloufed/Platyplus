@@ -1,0 +1,11 @@
+DungeonJournal (l'addon ForeverDungeonJournal), par Exehn, pour le dossier DungeonJournal/ de Platyplus
+(journal intégré, importé par dev/make_dungeonjournal.py) et DungeonJournalGlue.lua qui l'y relie.
+
+L'addon n'est accompagné d'aucune licence : son code, ses données (boss, butin, quêtes, plans, routes) et ses
+images restent le travail de son auteur. Il est intégré ici pour un usage personnel. Pour redistribuer
+Platyplus avec ce dossier, demandez d'abord l'accord d'Exehn.
+
+Les images de DungeonJournal/Media viennent en grande partie de l'art de Blizzard Entertainment.
+
+Ce que Platyplus y ajoute (DungeonJournalSkin.lua, DungeonJournalPlus.lua, et les points d'accroche posés par
+le script) est à Platyplus.
