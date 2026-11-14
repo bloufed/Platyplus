@@ -6,7 +6,8 @@
 
 <p align="center">
   <b>Le confort tout-en-un pour WoW Forever.</b><br>
-  Une touche qui fait tout, une menace lisible d'un coup d'œil et des fenêtres refaites — dans un seul addon.
+  Une touche qui fait presque tout, des alertes de combat et une menace lisibles d'un coup d'œil, le butin et la
+  vente sans clics, et des fenêtres refaites — dans un seul addon.
 </p>
 
 <p align="center">
@@ -23,8 +24,10 @@ tout au long de l'aventure : chaque fois qu'un détail du jeu me paraissait lent
 un nouveau module. Aujourd'hui il remplace une douzaine de petits addons par un seul, avec une seule fenêtre
 d'options et un seul style.
 
-Tout est facultatif. Chaque fonction a son interrupteur dans `/pp`, et rien ne change dans ton jeu tant que tu ne
-l'as pas allumé.
+Les fonctions utiles sont allumées dès le départ : tu peux jouer tout de suite. Tu préfères une autre base ? Choisis
+un mode prêt à l'emploi (**Recommandé**, **Complet**, **Immersif** ou **Minimal**) et toutes les fonctions se règlent
+en un clic. Chacune garde son interrupteur dans `/pp`, et une courte visite guidée, à ta première connexion, montre ce
+que fait chaque fonction.
 
 ![La fenêtre d'options](docs/images/options-key.jpg)
 
@@ -33,7 +36,7 @@ l'as pas allumé.
 
 ## Pourquoi Platyplus
 
-- **Un addon au lieu de douze.** Interaction, butin, vente, combat, plates, menace, procs, chat, sacs, fiche de
+- **Un addon au lieu de douze.** Interaction, butin, vente, alertes de combat, plates, menace, procs, chat, sacs, fiche de
   personnage : une installation, une fenêtre de réglages, un style cohérent.
 - **Une touche qui fait tout.** Appuie sur `F` (ou la touche de ton choix) pour parler, ramasser, cueillir,
   dépecer, prendre et rendre les quêtes, et utiliser l'objet de quête au bon endroit.
@@ -44,6 +47,32 @@ l'as pas allumé.
 - **Fait pour Forever.** Écrit pour le client Forever (1.60) et ses valeurs secrètes, pas porté d'une autre
   version du jeu.
 - **7 langues.** Français, English, Deutsch, Español, Italiano, Português (BR), Русский.
+
+## Premiers pas
+
+1. **Installation.** Télécharge la dernière archive dans [Releases](https://github.com/bloufed/Platyplus/releases/latest)
+   (ou sur CurseForge) et décompresse-la pour obtenir
+   `World of Warcraft\_forever_\Interface\AddOns\Platyplus\Platyplus.toc`. Relance le jeu.
+2. **La visite guidée.** À ta première connexion, une courte visite s'ouvre, en anglais. **Choisis ta langue en haut
+   de sa première page** (Français, Deutsch, Español…) : la visite change tout de suite. Ensuite : une page de bienvenue, puis une petite
+   page par grande fonction (la touche, le combat, la menace, le butin, la vente, les fenêtres, l'icône), chacune
+   avec ses interrupteurs principaux. Passe-la, ou reviens-y quand tu veux avec `/pp bienvenue` (ou `/pp tuto`).
+3. **Choisis un mode.** La 2e page de la visite (et l'onglet **Modes** de `/pp`) propose quatre bases. Un clic règle
+   toutes les fonctions ; tu changes ensuite ce que tu veux. Survole un mode pour voir exactement ce qu'il change.
+   - **Recommandé** (par défaut) : les fonctions utiles allumées, rien qui décide à ta place.
+   - **Complet** : tout allumé, automatismes compris : invitations des amis et de la guilde, invocations,
+     résurrections, duels refusés, courrier ouvert d'un coup, quêtes prises et rendues sans la touche, mana du healer.
+   - **Immersif** : moins d'écrans et de chiffres : ni alertes de combat, ni barre d'infos, ni flux de butin, ni
+     fenêtre de menace, ni plates colorées, ni messages d'erreur rouges. Les aides discrètes restent (la touche, le
+     loot instantané, la vente, les grandes fenêtres de quête).
+   - **Minimal** : tout coupé sauf l'icône ; tu allumes seulement ce que tu veux.
+
+   Un mode ne touche jamais à ta touche, tes listes, les positions, tailles ou couleurs. `/pp mode complet` marche aussi.
+4. **Les options.** Tape `/pp`, ou clic gauche sur l'icône Platyplus à l'écran. Les onglets sont à gauche ; survole
+   un réglage pour lire ce qu'il fait. Clic droit sur l'icône : un menu rapide pour allumer ou couper les fonctions.
+5. **Perdu ?** `/pp help` liste toutes les commandes dans le chat.
+
+![La visite guidée](docs/images/tour-fr.jpg)
 
 ## Fonctions
 
@@ -58,13 +87,13 @@ l'as pas allumé.
 
 ### Combat
 
-![Barre de ressource, alerte de proc et flux de butin](docs/images/hud.jpg)
+![Alerte de proc, flux de butin et barre de coups blancs](docs/images/hud.jpg)
 
-- Une **barre de ressource** claire au centre de l'écran, avec le coût de tes sorts marqué dessus, et une
-  **barre de coups blancs**.
 - **Alertes de proc** : le sort qui vient de devenir utilisable s'affiche avec son icône et sa touche (Fulgurance,
   Vengeance, Exécution, Riposte, Contre-attaque..., les sorts qui brillent pour les lanceurs de sorts, et ceux que
   tu ajoutes).
+- **Barre de coups blancs** : elle se remplit jusqu'à ta prochaine attaque automatique, pour placer Frappe
+  héroïque au bon moment.
 - **Fenêtre de menace** : une ligne par mob en combat — sa vie, qui il tape, ton pourcentage de menace.
 - **Plates de menace** dans l'esprit de Threat Plates : couleurs tank ou dégâts, avancée des quêtes, étiquettes
   rare / élite / boss, barres d'incantation qui te disent quand ton interruption est prête. Préréglages, barres
@@ -116,19 +145,14 @@ l'as pas allumé.
   XP et XP par heure — où tu veux à l'écran.
 - Les **réglages du jeu** recommandés, en un clic.
 
-## Installation
-
-1. Télécharge la dernière archive dans [Releases](https://github.com/bloufed/Platyplus/releases/latest)
-   (ou sur CurseForge).
-2. Décompresse-la pour obtenir `World of Warcraft\_forever_\Interface\AddOns\Platyplus\Platyplus.toc`.
-3. Relance le jeu, puis tape `/pp`.
-
 ## Commandes
 
 | Commande | Effet |
 |---|---|
 | `/pp` | Ouvre la fenêtre d'options |
 | `/pp help` | Liste toutes les commandes |
+| `/pp bienvenue` | Relance la visite guidée (aussi `/pp tuto`) |
+| `/pp mode [nom]` | Montre ton mode, ou en change : `recommande`, `complet`, `immersif`, `minimal` |
 | `/pp key` | Change la touche |
 | `/pp menace` | Fenêtre de menace (`on`, `off`, `test`, `reset`) |
 | `/pp plates` | Plates (`on`, `off`, `tank`, `dps`, `auto`) |
@@ -139,11 +163,18 @@ l'as pas allumé.
 
 ## Bon à savoir
 
-- **État.** Platyplus est jeune (0.x) et en développement actif. Il a été écrit et joué sur un guerrier ; les
+- **État.** Platyplus est jeune et en développement actif. Il a été écrit et joué sur un guerrier ; les
   autres classes sont prises en charge mais moins éprouvées. Les retours de bugs sont les bienvenus.
+- **Fenêtres remplacées.** Platyplus dessine ses propres fenêtres de quête, de sacs, du personnage et de chat. Si
+  tu préfères celles du jeu, coupe-les dans les onglets **Fenêtres** et **Chat** (ou sur la page « Fenêtres » de la
+  visite) : les originales reviennent tout de suite.
+- **Ta touche.** Platyplus utilise `F` par défaut. Si le jeu avait déjà une action sur cette touche, l'onglet
+  **La touche** te le signale ; choisis-en une autre là, ou avec `/pp key`.
 - **Journal des donjons.** Platyplus n'embarque pas de journal des donjons. Si tu installes
   [DungeonJournal d'Exehn](https://www.curseforge.com/wow/addons/dungeonjournal), Platyplus l'ouvre depuis son
-  menu, son onglet Donjons et `/pp donjons`.
+  menu, son onglet Donjons et `/pp donjons`, et l'habille : le style Platyplus, une colonne « Donjons » à gauche
+  et une ligne « À ton niveau » sur l'accueil (chacun avec son interrupteur). Ces ajouts sont ceux de Platyplus,
+  pas d'Exehn : éteins-les dans l'onglet Donjons avant de signaler un bug à DungeonJournal.
 - **Traducteur.** Le dossier `Traducteur/` de ce dépôt est un programme Windows facultatif (Python + un modèle
   Ollama local) qui traduit le chat en français. Il ne fait pas partie du téléchargement de l'addon.
 
@@ -160,7 +191,7 @@ python -I dev/apercu.py            # aperçus HTML de chaque fenêtre
 `CLAUDE.md` est la carte du code (modules, widgets, recettes, pièges du client Forever). Les commentaires et les
 textes source sont en français ; les traductions sont dans `Locales/`.
 
-Une version se publie en poussant un tag (`v0.3.0`) : une action GitHub fabrique l'archive, l'attache à la release
+Une version se publie en poussant un tag (`v1.0.0`) : une action GitHub fabrique l'archive, l'attache à la release
 et l'envoie sur CurseForge.
 
 ## Crédits et licence

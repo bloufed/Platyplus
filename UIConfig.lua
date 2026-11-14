@@ -43,7 +43,7 @@ W.TIP_DX = W.CARD_PAD + PAD_R + 14
 local IGNORED = {
     uiX = true, uiY = true, uiPoint = true, uiTab = true,
     point = true, relPoint = true, x = true, y = true,
-    hudX = true, hudY = true, launcherPoint = true, launcherX = true, launcherY = true,
+    launcherPoint = true, launcherX = true, launcherY = true,
 }
 
 UI.pages = {}
@@ -910,7 +910,7 @@ function UI:RegisterSettingsPanel()
         desc:SetPoint("TOPLEFT", logo, "BOTTOMLEFT", 0, -18)
         desc:SetWidth(560)
         desc:SetJustifyH("LEFT")
-        desc:SetText(ns.T("Une touche pour interagir, looter, parler et rendre les quêtes ; vente automatique, barre de ressource lisible, flux de butin et bien plus. Tous les réglages sont dans la fenêtre de Platyplus (tu peux aussi taper /pp)."))
+        desc:SetText(ns.T("Une touche pour parler aux PNJ, ramasser le butin et rendre les quêtes ; des alertes de combat, la menace lisible sur les mobs, la vente automatique, des fenêtres plus claires et bien plus. Tous les réglages sont dans la fenêtre de Platyplus (tu peux aussi taper /pp)."))
         local btn = W.Button(panel, {
             text = "Ouvrir les options de Platyplus", width = 270, height = 34, primary = true,
             onClick = function()
@@ -920,6 +920,11 @@ function UI:RegisterSettingsPanel()
             end,
         })
         btn:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -18)
+        local tour = W.Button(panel, {
+            text = "Revoir la visite guidée", width = 220, height = 34,
+            onClick = function() UI:ShowWelcome(1) end,
+        })
+        tour:SetPoint("LEFT", btn, "RIGHT", 10, 0)
 
         local category = Settings.RegisterCanvasLayoutCategory(panel, "Platyplus")
         Settings.RegisterAddOnCategory(category)
@@ -929,34 +934,590 @@ function UI:RegisterSettingsPanel()
 end
 
 ---------------------------------------------------------------------------
--- Présentation « Qu'est-ce que Platyplus ? » : affichée une fois, à la première connexion avec l'addon
--- (réglage welcomeSeen) ; /pp bienvenue la réaffiche. Construite seulement quand on l'ouvre.
+-- Visite guidée « Bienvenue dans Platyplus » (UI:ShowWelcome) : une page de présentation générale, puis une petite
+-- page par grande fonction (ce qu'elle fait, avec des exemples ; ses réglages principaux en interrupteurs ; un lien
+-- vers son onglet d'options) et une page de fin (ce qu'il faut retenir). Colonne des étapes à gauche (clic = aller à
+-- l'étape), Précédent / Suivant en bas. Affichée une fois, à la première connexion avec l'addon (réglage welcomeSeen) ;
+-- /pp bienvenue la réaffiche. Construite seulement quand on l'ouvre, chaque page à sa première visite.
 ---------------------------------------------------------------------------
 local WELCOME_NAME = "PlatyplusWelcome"
-local WEL_W, WEL_H = 660, 500
-local WEL_PAD = 28
-local TILE_W = floor((WEL_W - 2 * WEL_PAD - 14) / 2)
-local TILE_H = 76
+local WEL_W, WEL_H = 860, 620
+local RAIL_W = 216                              -- colonne des étapes
+local WEL_PAD = 30                              -- marges de la zone de contenu
+local BODY_W = WEL_W - RAIL_W - 2 * WEL_PAD    -- largeur utile d'une page
+local BODY_TOP = 34
+local FOOT_H = 74                               -- pied : compteur d'étapes et boutons
+local STEP_H, STEP_GAP = 34, 2
+local CARD_IN = 16                              -- marge intérieure de la carte des réglages rapides
+local HEAD_DX = 62                              -- retrait du titre et de l'accroche (à droite de l'icône)
 
-local FEATURES = {
-    { icon = "Interface\\Icons\\INV_Misc_Key_03", title = "Une touche pour tout",
-      text = "F parle aux PNJ, ramasse le butin, récolte, accepte et rend les quêtes." },
-    { icon = "Interface\\Icons\\INV_Misc_Bag_10", title = "Butin instantané, flux à l'écran",
-      text = "Tout se ramasse d'un coup ; butin, ventes, fabrication et quêtes défilent à l'écran." },
-    { icon = "Interface\\Icons\\INV_Misc_Coin_01", title = "Vente et réparation",
-      text = "Les objets gris et l'équipement inutile se vendent seuls ; le marchand répare aussi." },
-    { icon = "Interface\\Icons\\Ability_Warrior_BattleShout", title = "Coût en rage sur tes sorts",
-      text = "Chaque sort affiche son coût, en rouge tant qu'il te manque de la rage." },
-    { icon = "Interface\\Icons\\INV_Misc_Food_15", title = "Touches pour manger et boire",
-      text = "Le meilleur repas ou la meilleure boisson ; une potion en combat. Général > Manger et boire." },
-    { icon = false, title = "Icône et barre d'infos",
-      text = "FPS, or, sacs, durabilité, niveau d'objet, XP/h : posés où tu veux, hors minicarte." },
+-- Les étapes, dans l'ordre. Textes en français = clés de traduction (traduits à la construction).
+--  rail : nom dans la colonne ; title, pitch : en-tête ; points : ce que fait la fonction, avec des exemples ;
+--  key : capture de la touche d'interaction ; switches : réglages rapides { clé de ns.db, libellé, info-bulle } ;
+--  tabs : onglets d'options où se trouvent tous les réglages (id de Pages.list)
+local TOUR = {
+    { kind = "intro", rail = "Bienvenue" },
+    { kind = "modes", rail = "Ton mode", icon = "Interface\\Icons\\INV_Scroll_03", tabs = { "modes" },
+      title = "Choisis ta base",
+      pitch = "Un clic règle toutes les fonctions d'un coup. Tu ajustes ensuite ce que tu veux, ici ou avec /pp." },
+    { rail = "La touche", icon = "Interface\\Icons\\INV_Misc_Key_03", tabs = { "general" }, key = true,
+      title = "Une touche pour presque tout",
+      pitch = "Vise quelque chose (ou approche-toi) et appuie sur ta touche : Platyplus fait la bonne action.",
+      points = {
+          "Parler à un PNJ, ouvrir un coffre, cueillir une plante, dépecer une bête.",
+          "Dans un dialogue, la même touche fait défiler le texte, accepte la quête, puis la rend.",
+          "À l'endroit indiqué par une quête, elle utilise l'objet de quête. Maj + touche : interagir normalement.",
+          "Dans le même onglet, deux touches de plus pour manger et boire le meilleur de tes sacs (une potion en combat).",
+      } },
+    { rail = "Combat", icon = "Interface\\Icons\\Ability_MeleeDamage", tabs = { "procs", "resources" },
+      title = "Des alertes de combat lisibles",
+      pitch = "Ce qu'il faut faire s'affiche en grand près de ton personnage, avec la touche à presser.",
+      points = {
+          "Alerte de proc : quand une technique devient utilisable (Fulgurance, Riposte, un sort qui brille…), son icône apparaît avec sa touche.",
+          "Barre de coups blancs : le minuteur de ton attaque automatique, pour placer tes coups au bon moment.",
+          "Rappel de buffs : ceux que ton groupe peut te donner et qui te manquent ; pour un guerrier, le Cri de guerre en combat.",
+          "Au survol d'un mob : ce qu'il peut te faire subir (étourdissement, ralentissement, peur…) et combien de temps.",
+      },
+      switches = {
+          { "procAlert", "Alerte de proc", "L'icône du sort qui vient de devenir utilisable, sous ton personnage, avec la touche à presser." },
+          { "swingBar", "Barre de coups blancs", "Une barre qui se remplit jusqu'à ton prochain coup automatique. Visible en combat seulement." },
+          { "buffAllies", "Buffs que mon groupe peut me donner", "Hors combat : l'icône du buff qui te manque et le nom de l'allié qui peut te le donner." },
+      } },
+    { rail = "Menace", icon = "Interface\\Icons\\Ability_Warrior_DefensiveStance", tabs = { "plates", "resources" },
+      title = "La menace d'un coup d'œil",
+      pitch = "En combat, la barre de vie de chaque mob (sa « plate ») prend la couleur de la situation.",
+      points = {
+          "Si tu fais des dégâts : vert quand le mob t'ignore, orange quand ça se joue, rouge quand il t'attaque. Si tu tankes, c'est l'inverse : rouge, il t'échappe.",
+          "Sur la plate : ta progression de quête (« 3/8 ») et l'étiquette « Rare ».",
+          "Barres d'incantation : une couleur à part quand ton interruption est prête.",
+          "En groupe, une fenêtre de menace liste chaque mob du combat et qui il attaque.",
+      },
+      switches = {
+          { "plates", "Plates colorées par la menace", "Les barres de vie des mobs changent de couleur selon qui ils attaquent. Ton rôle (tank ou dégâts) est deviné tout seul." },
+          { "threatWindow", "Fenêtre de menace", "Par défaut, elle n'apparaît qu'en groupe et en combat." },
+      } },
+    { rail = "Butin", icon = "Interface\\Icons\\INV_Misc_Bag_08", tabs = { "loot" },
+      title = "Le butin sans clics",
+      pitch = "Tout est ramassé d'un coup, et tu vois ce que tu gagnes sans ouvrir tes sacs.",
+      points = {
+          "Ouvre un cadavre ou un coffre : tout le butin part directement dans tes sacs.",
+          "Ce que tu gagnes défile à côté de ton personnage : butin, achats, objets fabriqués, récompenses de quête.",
+          "Les plantes et les cadavres qui ont encore du butin pour toi scintillent quand tu approches.",
+          "En groupe, une fenêtre suit les jets de dés : qui fait Besoin ou Cupidité, et qui gagne.",
+      },
+      switches = {
+          { "instantLoot", "Loot instantané", "Tout le contenu d'un cadavre ou d'un coffre est ramassé dès l'ouverture." },
+          { "floatLoot", "Flux de butin à l'écran", "Chaque objet gagné s'affiche quelques secondes à côté de ton personnage, avec sa quantité." },
+          { "lootRolls", "Fenêtre des jets de dés", "En groupe, elle s'ouvre quand un objet est mis aux dés et montre le choix et le dé de chaque joueur." },
+      } },
+    { rail = "Vente & HDV", icon = "Interface\\Icons\\INV_Misc_Coin_02", tabs = { "sell" },
+      title = "Vendre et réparer sans y penser",
+      pitch = "Parle à un marchand : le tri est déjà fait.",
+      points = {
+          "Les objets gris et l'équipement moins bon que le tien se vendent tout seuls. Tu peux les racheter chez le marchand.",
+          "Une liste « Ne jamais vendre » protège ce que tu veux garder, et un aperçu montre ce qui partira.",
+          "Ton équipement est réparé, avec l'argent de la guilde quand c'est possible.",
+          "À l'hôtel des ventes : un panneau pour mettre en vente en quelques clics, et le prix de l'HDV dans les infobulles.",
+      },
+      switches = {
+          { "sellJunk", "Vendre les objets gris", "Chez un marchand, tous tes objets gris sont vendus." },
+          { "sellGear", "Vendre l'équipement inutile", "Équipement blanc ou vert d'un niveau inférieur à ce que tu portes. Réglable dans l'onglet Vente & HDV." },
+          { "autoRepair", "Réparer chez les marchands", "Ton équipement est réparé dès que tu parles à un marchand qui sait réparer." },
+      } },
+    { rail = "Fenêtres", icon = "Interface\\Icons\\INV_Misc_Bag_07", tabs = { "windows", "chat" },
+      title = "Des fenêtres plus claires",
+      pitch = "Les fenêtres du jeu redessinées : plus grandes et plus lisibles.",
+      points = {
+          "Quêtes et dialogues en grand texte ; les récompenses au choix en grandes cartes, la meilleure pour toi mise en avant.",
+          "Tous tes sacs dans une seule fenêtre.",
+          "Fenêtre du personnage (touche C) : équipement, niveau d'objet, réputation, compétences, monnaies.",
+          "Un chat plus lisible : onglets, anti-spam, et l'historique gardé après un /reload.",
+      },
+      switches = {
+          { "questWindow", "Fenêtre de quête et de dialogue", "Remplace la fenêtre de dialogue des PNJ par une fenêtre Platyplus en grand texte." },
+          { "bagWindow", "Une seule fenêtre pour tous les sacs", "Remplace les sacs séparés du jeu (touche B)." },
+          { "charWindow", "Fenêtre du personnage", "Remplace la fiche du personnage du jeu (touche C)." },
+      } },
+    { rail = "Icône & infos", logo = true, tabs = { "launcher" },
+      title = "L'icône Platyplus",
+      pitch = "Ton raccourci vers tout Platyplus, posé où tu veux à l'écran.",
+      points = {
+          "Clic gauche : les options. Clic droit : un menu pour allumer ou couper les fonctions. Glisse-la pour la déplacer.",
+          "À côté, une barre d'infos : FPS, latence, or, place dans les sacs, durabilité, niveau d'objet.",
+          "Expérience : le pourcentage du niveau. Clique dessus pour voir l'XP par heure, le temps avant le niveau ou les mobs restants.",
+      },
+      switches = {
+          { "launcher", "Icône Platyplus", "Cachée, tu ouvres toujours les options avec /pp." },
+          { "dock", "Barre d'infos à côté de l'icône", "Choisis les infos affichées dans l'onglet Icône & infos." },
+      } },
+    { kind = "done", rail = "C'est parti" },
 }
+
+-- position d'un onglet d'options d'après son id (Pages.list)
+local function tabIndex(id)
+    for i = 1, ns.Pages:Count() do
+        local def = ns.Pages:GetInfo(i)
+        if def and def.id == id then return i, def end
+    end
+end
+
+-- texte sur plusieurs lignes, aligné à gauche
+local function para(parent, text, color, size, width)
+    local fs = W.Text(parent, "GameFontHighlight", color or C.text, "OVERLAY", size or 13)
+    fs:SetWidth(width or BODY_W)
+    fs:SetJustifyH("LEFT")
+    fs:SetJustifyV("TOP")
+    fs:SetSpacing(2)
+    fs:SetText(text)
+    fs.textH = W.Measure(fs, text, width or BODY_W)
+    return fs
+end
+
+-- hauteur d'une ligne de texte simple (mesurée par le jeu, approchée par le simulateur)
+local function lineHeight(fs)
+    local ok, h = pcall(fs.GetStringHeight, fs)
+    fs.textH = (ok and type(h) == "number" and h > 0) and h or 14
+    return fs
+end
+
+-- pose `region` sous `prev` (texte mesuré ou cadre), décalé de dx, à `gap` points d'écart. Ancré sur le HAUT de prev
+-- plus sa hauteur : un texte qui passe à la ligne n'a pas de hauteur fixe sur laquelle s'ancrer par le bas.
+local function below(region, prev, dx, gap)
+    local h = prev.textH or prev:GetHeight() or 0
+    region:SetPoint("TOPLEFT", prev, "TOPLEFT", dx or 0, -floor(h + (gap or 0) + 0.5))
+end
+
+-- petit titre de section en capitales (« RÉGLAGES RAPIDES »)
+local function sectionTitle(parent, text)
+    local fs = W.Text(parent, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
+    local t = ns.T(text)
+    fs:SetText(ns.Win and ns.Win.Upper and ns.Win.Upper(t) or t:upper())
+    return lineHeight(fs)
+end
+
+-- liste à puces sous `anchor` ; dx = décalage horizontal de la 1re ligne par rapport au bord gauche d'anchor
+local function bullets(parent, list, anchor, dx, gap)
+    local last
+    for i, text in ipairs(list) do
+        local fs = para(parent, ns.T(text), C.text, 13, BODY_W - 18)
+        if i == 1 then
+            below(fs, anchor, dx + 18, gap)
+        else
+            below(fs, last, 0, 9)
+        end
+        local dot = W.NewTex(parent, TEX.circle, "ARTWORK")
+        dot:SetSize(6, 6)
+        dot:SetPoint("TOPLEFT", fs, "TOPLEFT", -15, -5)
+        dot:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+        last = fs
+    end
+    return last
+end
+
+-- en-tête d'une page : icône, titre, accroche
+local function pageHeader(page, step)
+    local icon = page:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(46, 46)
+    icon:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+    if step.logo then
+        icon:SetTexture(ns.LOGO)
+    else
+        icon:SetTexture(step.icon)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+    local title = W.Text(page, "GameFontHighlight", C.text, "OVERLAY", 21)
+    title:SetPoint("TOPLEFT", icon, "TOPRIGHT", HEAD_DX - 46, -1)
+    title:SetWidth(BODY_W - HEAD_DX - 30)   -- (le bouton de fermeture est au-dessus, à droite)
+    title:SetJustifyH("LEFT")
+    title:SetWordWrap(false)
+    title:SetText(ns.T(step.title))
+    lineHeight(title)
+    local pitch = para(page, ns.T(step.pitch or ""), C.dim, 13, BODY_W - HEAD_DX)
+    below(pitch, title, 0, 7)
+    -- l'accroche descend au moins jusqu'au bas de l'icône : ce qui suit s'ancre sur elle
+    pitch.textH = max(pitch.textH, 46 - 1 - title.textH - 7)
+    page.icon, page.title, page.pitch = icon, title, pitch
+    return pitch
+end
+
+-- liens vers les onglets d'options de la fonction (« Tous les réglages : Procs · Combat »)
+local function tabLinks(f, page, step, anchor, dx)
+    local intro = W.Text(page, "GameFontHighlightSmall", C.dim, "OVERLAY", 12)
+    intro:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", dx, -16)
+    intro:SetText(ns.T(#(step.tabs or {}) > 1 and "Tous les réglages dans les onglets" or "Tous les réglages dans l'onglet"))
+    lineHeight(intro)
+    local prev = intro
+    for _, id in ipairs(step.tabs or {}) do
+        local index, def = tabIndex(id)
+        if index then
+            local b = CreateFrame("Button", nil, page)
+            b:SetHeight(20)
+            local fs = W.Text(b, "GameFontHighlight", C.accent, "OVERLAY", 12)
+            fs:SetPoint("LEFT", b, "LEFT", 0, 0)
+            fs:SetText(ns.T(def.title) .. "  ›")
+            b:SetWidth(floor((fs:GetStringWidth() or 120) + 4))
+            b:SetPoint("LEFT", prev, "RIGHT", (prev == intro) and 10 or 18, 0)
+            b:SetScript("OnEnter", function() W.TextColor(fs, C.accentHover) end)
+            b:SetScript("OnLeave", function() W.TextColor(fs, C.accent) end)
+            b:SetScript("OnClick", function()
+                W.Sound("click")
+                f.resume = f.step                 -- /pp bienvenue reprendra ici
+                f:Hide()
+                UI:Open()
+                UI:SelectTab(index)
+            end)
+            prev = b
+        end
+    end
+    return intro
+end
+
+-- réglages rapides : interrupteurs (ou capture de la touche) dans une carte
+local function quickCard(page, step, anchor, dx)
+    local label = sectionTitle(page, step.key and "Ta touche" or "Réglages rapides")
+    below(label, anchor, dx, 22)
+    local card = CreateFrame("Frame", nil, page)
+    card:SetWidth(BODY_W)
+    below(card, label, 0, 8)
+    card.innerW = BODY_W - 2 * CARD_IN
+    W.Round(card, "BACKGROUND", 1, 9):SetColor(C.card)
+    page.widgets = {}
+    local h = 0
+    if step.key then
+        local cap = W.KeyCapture(card, { key = "key", label = "Touche d'interaction" })
+        cap:SetPoint("TOPLEFT", card, "TOPLEFT", CARD_IN, -CARD_IN)
+        local function fit() card:SetHeight(floor((cap:GetHeight() or 92) + 2 * CARD_IN - 8 + 0.5)) end
+        cap.onResize = fit
+        fit()
+        page.widgets[1] = cap
+        return card
+    end
+    for i, sw in ipairs(step.switches or {}) do
+        local row = W.Switch(card, { key = sw[1], label = sw[2], tip = sw[3] })
+        row:SetPoint("TOPLEFT", card, "TOPLEFT", CARD_IN, -(6 + h))
+        h = h + row:GetHeight()
+        if i < #step.switches then
+            local line = card:CreateTexture(nil, "ARTWORK")
+            line:SetHeight(1)
+            line:SetPoint("TOPLEFT", card, "TOPLEFT", CARD_IN, -(6 + h))
+            line:SetPoint("TOPRIGHT", card, "TOPRIGHT", -CARD_IN, -(6 + h))
+            line:SetColorTexture(1, 1, 1, 0.05)
+        end
+        page.widgets[#page.widgets + 1] = row
+    end
+    card:SetHeight(h + 12)
+    return card
+end
+
+-- page d'une fonction : en-tête, ce qu'elle fait, réglages rapides, liens vers ses onglets
+local function buildFeaturePage(f, page, step)
+    local pitch = pageHeader(page, step)
+    local last = bullets(page, step.points or {}, pitch, -HEAD_DX, 22)
+    local card = quickCard(page, step, last, -18)
+    tabLinks(f, page, step, card, 0)
+end
+
+-- choix d'un mode prêt à l'emploi (UIPages : Pages.ModePicker) ; les pages suivantes montrent ses interrupteurs
+local function buildModesPage(f, page, step)
+    local pitch = pageHeader(page, step)
+    local picker = ns.Pages.ModePicker(page, BODY_W, { base = C.card, hover = C.btn })
+    below(picker, pitch, -HEAD_DX, 24)
+    page.widgets = { picker }
+    local note = para(page, ns.T("Pas sûr ? Garde Recommandé : c'est le réglage de départ. Les pages suivantes "
+        .. "montrent les principaux interrupteurs de chaque fonction, réglés selon ton mode."), C.dim, 12)
+    below(note, picker, 0, 14)
+    note:SetHeight(note.textH)        -- (les liens s'ancrent sous elle)
+    tabLinks(f, page, step, note, 0)
+end
+
+-- Choix de la langue, tout en haut de la présentation : une pastille par langue, chacune écrite dans sa langue.
+-- Platyplus démarre en anglais ; si le jeu est dans une autre langue proposée, une ligne (dans cette langue) invite à
+-- cliquer dessus. Le changement s'applique tout de suite à la visite (reconstruite) quand le dictionnaire est encore
+-- chargé (première visite), sinon au /reload. Renvoie un cadre dont la hauteur couvre le bloc (ancrage du reste).
+local CYR_FONT = "Fonts\\FRIZQT___CYR.TTF"
+local CHIP_H, CHIP_GAP = 28, 6
+
+local function reloadButton(page)
+    return W.Button(page, {
+        text = "Recharger l'interface", width = 200, height = 28,
+        confirm = "Clique encore pour recharger",
+        onClick = function()
+            local reload = rawget(_G, "ReloadUI")
+            if InCombatLockdown and InCombatLockdown() then
+                ns:Print("impossible en combat : réessaie après le combat")
+            elseif reload then
+                reload()
+            end
+        end,
+    })
+end
+
+local function languageBlock(f, page, anchor)
+    local L = ns.Locale
+    local chosen = L.Resolve(ns.db and ns.db.language)
+    local client = L.Client()
+    local block = CreateFrame("Frame", nil, page)
+    block:SetWidth(BODY_W)
+    below(block, anchor, 0, 20)
+
+    local label = W.Text(block, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
+    label:SetPoint("TOPLEFT", block, "TOPLEFT", 0, 0)
+    local word = ns.T("Langue")
+    word = ns.Win and ns.Win.Upper and ns.Win.Upper(word) or word:upper()
+    label:SetText(ns.lang == "enUS" and "LANGUAGE" or (word .. "  ·  LANGUAGE"))
+    lineHeight(label)
+
+    local top = floor(label.textH + 8 + 0.5)
+    local x, row = 0, 0
+    for _, l in ipairs(ns.LANGUAGES) do
+        local b = CreateFrame("Button", nil, block)
+        b:SetHeight(CHIP_H)
+        local active = (l.code == chosen)
+        b.bg = W.Round(b, "BACKGROUND", 1, 8)
+        local fs = W.Text(b, "GameFontHighlight", active and C.ink or C.text, "OVERLAY", 13)
+        if l.code == "ruRU" then pcall(fs.SetFont, fs, CYR_FONT, 13, "") end   -- cyrillique sur tous les clients
+        fs:SetPoint("CENTER", b, "CENTER", 0, 0)
+        fs:SetText(l.name)
+        local ok, sw = pcall(fs.GetStringWidth, fs)
+        local w = floor(((ok and type(sw) == "number" and sw > 0) and sw or 7 * #l.name) + 28 + 0.5)
+        if x > 0 and x + w > BODY_W then x, row = 0, row + 1 end
+        b:SetWidth(w)
+        b:SetPoint("TOPLEFT", block, "TOPLEFT", x, -(top + row * (CHIP_H + CHIP_GAP)))
+        x = x + w + CHIP_GAP
+        local function paint(hover)
+            if active then
+                b.bg:SetColor(C.accent)
+            else
+                b.bg:SetColor(hover and C.btnHover or C.btn)
+            end
+        end
+        paint(false)
+        b:SetScript("OnEnter", function() paint(true) end)
+        b:SetScript("OnLeave", function() paint(false) end)
+        b:SetScript("OnClick", function()
+            if active then return end
+            UI:SetTourLanguage(l.code)
+        end)
+        b.code = l.code
+        block.chips = block.chips or {}
+        block.chips[#block.chips + 1] = b
+    end
+    local h = top + (row + 1) * CHIP_H + row * CHIP_GAP
+
+    -- ligne sous les pastilles : après un changement, ce qu'il reste à faire ; sinon, l'invitation dans la langue
+    -- du jeu (si Platyplus la propose et qu'elle n'est pas déjà choisie)
+    local text, color, withReload
+    if UI.langSwitched == "live" then
+        -- (phrase d'un seul tenant : l'extraction des traductions lit les T("…") littéraux de ce fichier)
+        text = ns.T("Langue changée. Les textes déjà affichés ailleurs (barre d'infos, options du jeu) suivront au prochain /reload.")
+        color, withReload = C.dim, true
+    elseif UI.langSwitched == "reload" then
+        text, color, withReload = ns.T("Recharge l'interface pour passer Platyplus dans cette langue."), C.gold, true
+    else
+        if client and client ~= chosen then
+            local name = L.Name(client)
+            local fmt = L.In(client, "Clique sur « %s » pour avoir Platyplus dans la langue de ton jeu.")
+            text = fmt and string.format(fmt, name)
+                or ns.Tf("Clique sur « %s » pour avoir Platyplus dans la langue de ton jeu.", name)
+            color = C.gold
+        end
+    end
+    if text then
+        local note = para(block, text, color, 12, withReload and (BODY_W - 214) or BODY_W)
+        if client == "ruRU" then pcall(note.SetFont, note, CYR_FONT, 12, "") end
+        note:SetPoint("TOPLEFT", block, "TOPLEFT", 0, -(h + 10))
+        local noteH = note.textH
+        if withReload then
+            local btn = reloadButton(block)
+            btn:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, -(h + 6))
+            noteH = max(noteH, 28)
+        end
+        h = h + 10 + noteH
+    end
+    block:SetHeight(floor(h + 0.5))
+    page.langBlock = block
+    return block
+end
+
+-- présentation générale
+local function buildIntroPage(f, page)
+    local logo = page:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(64, 64)
+    logo:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+    logo:SetTexture(ns.LOGO)
+    local glow = W.NewTex(page, TEX.glow, "BACKGROUND", 2)
+    glow:SetSize(140, 140)
+    glow:SetPoint("CENTER", logo, "CENTER", 0, 0)
+    glow:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.22)
+    local title = W.Text(page, "GameFontHighlight", nil, "OVERLAY", 25)
+    title:SetPoint("TOPLEFT", logo, "TOPRIGHT", 18, -6)
+    title:SetText(ns.Tf("Bienvenue dans %s", W.Color("accent", "Platy") .. W.Color("gold", "plus")))
+    lineHeight(title)
+    local sub = W.Text(page, "GameFontHighlight", C.dim, "OVERLAY", 12)
+    below(sub, title, 0, 8)
+    sub:SetText(ns.Tf("Le confort tout-en-un pour WoW Forever · v%s", tostring(ns.version or "?")))
+
+    local lang = languageBlock(f, page, logo)
+    local intro = para(page, ns.T("Platyplus rassemble en un seul addon les petits plus qui rendent le jeu plus fluide : "
+        .. "une touche qui fait presque tout, des alertes de combat lisibles, le butin et la vente sans clics, "
+        .. "et des fenêtres plus claires."), C.text, 14)
+    below(intro, lang, 0, 22)
+
+    local HOW = {
+        { "Prêt à jouer", "Les fonctions utiles sont déjà allumées : tu peux fermer cette fenêtre et jouer tout de suite." },
+        { "Un mode pour commencer", "Recommandé, Complet, Immersif ou Minimal : un clic règle tout d'un coup, et tu changes ensuite ce que tu veux." },
+        { "Tout se règle avec /pp", "Tape /pp ou clique sur l'icône Platyplus : chaque fonction a son interrupteur, et chaque réglage s'explique quand tu le survoles. Pour revoir cette visite : /pp bienvenue." },
+    }
+    local prev = intro
+    for i, how in ipairs(HOW) do
+        local dot = W.NewTex(page, TEX.circle, "ARTWORK")
+        dot:SetSize(28, 28)
+        below(dot, prev, (i == 1) and 0 or -44, (i == 1) and 26 or 18)
+        dot:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.18)
+        local n = W.Text(page, "GameFontHighlight", C.accent, "OVERLAY", 14)
+        n:SetPoint("CENTER", dot, "CENTER", 0, 0)
+        n:SetText(tostring(i))
+        local t = W.Text(page, "GameFontHighlight", C.text, "OVERLAY", 14)
+        t:SetPoint("TOPLEFT", dot, "TOPRIGHT", 16, -1)
+        t:SetWidth(BODY_W - 44)
+        t:SetJustifyH("LEFT")
+        t:SetWordWrap(false)
+        t:SetText(ns.T(how[1]))
+        lineHeight(t)
+        local d = para(page, ns.T(how[2]), C.dim, 12, BODY_W - 44)
+        below(d, t, 0, 5)
+        prev = d
+    end
+end
+
+-- page de fin : commandes à retenir, bon à savoir
+local function buildDonePage(f, page)
+    local pitch = pageHeader(page, {
+        logo = true,
+        title = "Tout est prêt !",
+        pitch = "Platyplus est réglé pour bien démarrer. Voici l'essentiel à retenir.",
+    })
+    local label = sectionTitle(page, "À retenir")
+    below(label, pitch, -HEAD_DX, 26)
+    local CMDS = {
+        { "/pp", "ouvre les options (comme un clic sur l'icône Platyplus)" },
+        { "/pp help", "liste toutes les commandes dans le chat" },
+        { "/pp mode", "montre ton mode ; /pp mode complet (ou immersif…) en change" },
+        { "/pp bienvenue", "relance cette visite" },
+    }
+    local prev, CODE_W = label, 132
+    for i, cmd in ipairs(CMDS) do
+        local pillF = CreateFrame("Frame", nil, page)
+        pillF:SetSize(CODE_W, 26)
+        below(pillF, prev, 0, (i == 1) and 10 or 8)
+        W.Round(pillF, "BACKGROUND", 1, 7):SetColor(C.field)
+        local code = W.Text(pillF, "GameFontHighlight", C.accent, "OVERLAY", 13)
+        code:SetPoint("LEFT", pillF, "LEFT", 10, 0)
+        code:SetText(cmd[1])
+        local d = W.Text(page, "GameFontHighlight", C.text, "OVERLAY", 13)
+        d:SetPoint("LEFT", pillF, "RIGHT", 14, 0)
+        d:SetWidth(BODY_W - CODE_W - 14)
+        d:SetJustifyH("LEFT")
+        d:SetWordWrap(false)
+        d:SetText(ns.T(cmd[2]))
+        prev = pillF
+    end
+    local tips = sectionTitle(page, "Bon à savoir")
+    below(tips, prev, 0, 26)
+    bullets(page, {
+        "Dans les options, survole un réglage pour lire son explication. Clic droit sur un curseur : il revient à sa valeur par défaut.",
+        "D'autres onglets t'attendent : Confort (invitations, duels, invocations), Réglages du jeu (réglages conseillés en un clic) et Avancé (langue de Platyplus, remise à zéro).",
+        "Un souci, une idée ? Écris-nous sur github.com/bloufed/Platyplus.",
+    }, tips, 0, 10)
+end
+
+-- colonne des étapes : rond numéroté + nom ; l'étape affichée est soulignée par une barre bleue
+local function paintStep(b)
+    local f = b.owner
+    local cur = (b.index == f.step)
+    local seen = f.seen[b.index]
+    b.bg:SetShown(cur or b.hover)
+    b.bg:SetColor(cur and C.card or C.hover)
+    b.bar:SetShown(cur)
+    if cur then
+        b.dot:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 1)
+        W.TextColor(b.num, C.ink)
+    elseif seen then
+        b.dot:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.28)
+        W.TextColor(b.num, C.text)
+    else
+        b.dot:SetVertexColor(1, 1, 1, 0.08)
+        W.TextColor(b.num, C.dim)
+    end
+    W.TextColor(b.label, (cur or b.hover) and C.text or (seen and C.text or C.dim), (cur or b.hover or seen) and 1 or 0.85)
+end
+
+local function buildRail(f)
+    local rail = CreateFrame("Frame", nil, f)
+    rail:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+    rail:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+    rail:SetWidth(RAIL_W)
+    W.Round(rail, "BACKGROUND", -5, CORNER, "R"):SetColor(C.panel)
+    local edge = rail:CreateTexture(nil, "BORDER")
+    edge:SetPoint("TOPRIGHT", rail, "TOPRIGHT", 0, 0)
+    edge:SetPoint("BOTTOMRIGHT", rail, "BOTTOMRIGHT", 0, 0)
+    edge:SetWidth(1)
+    edge:SetColorTexture(1, 1, 1, 0.06)
+
+    local logo = rail:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(34, 34)
+    logo:SetPoint("TOPLEFT", rail, "TOPLEFT", 20, -24)
+    logo:SetTexture(ns.LOGO)
+    local name = W.Text(rail, "GameFontHighlight", nil, "OVERLAY", 16)
+    name:SetPoint("TOPLEFT", logo, "TOPRIGHT", 10, -1)
+    name:SetText(W.Color("accent", "Platy") .. W.Color("gold", "plus"))
+    local sub = W.Text(rail, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
+    sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -3)
+    sub:SetText(ns.T("Visite guidée"))
+
+    f.steps = {}
+    for i, step in ipairs(TOUR) do
+        local b = CreateFrame("Button", nil, rail)
+        b:SetSize(RAIL_W - 24, STEP_H)
+        b:SetPoint("TOPLEFT", rail, "TOPLEFT", 12, -(84 + (i - 1) * (STEP_H + STEP_GAP)))
+        b.owner, b.index = f, i
+        b.bg = W.Round(b, "BACKGROUND", 1, 7)
+        b.bar = b:CreateTexture(nil, "ARTWORK")
+        b.bar:SetSize(3, STEP_H - 14)
+        b.bar:SetPoint("LEFT", b, "LEFT", 0, 0)
+        b.bar:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 1)
+        b.dot = W.NewTex(b, TEX.circle, "ARTWORK")
+        b.dot:SetSize(22, 22)
+        b.dot:SetPoint("LEFT", b, "LEFT", 12, 0)
+        b.num = W.Text(b, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
+        b.num:SetPoint("CENTER", b.dot, "CENTER", 0, 0)
+        b.num:SetText(tostring(i))
+        b.label = W.Text(b, "GameFontHighlight", C.dim, "OVERLAY", 13)
+        b.label:SetPoint("LEFT", b.dot, "RIGHT", 11, 0)
+        b.label:SetWidth(RAIL_W - 24 - 12 - 22 - 11 - 8)
+        b.label:SetJustifyH("LEFT")
+        b.label:SetWordWrap(false)
+        b.label:SetText(ns.T(step.rail))
+        b:SetScript("OnEnter", function(self) self.hover = true paintStep(self) end)
+        b:SetScript("OnLeave", function(self) self.hover = false paintStep(self) end)
+        b:SetScript("OnClick", function(self)
+            if self.index ~= f.step then
+                W.Sound("tab")
+                f:ShowStep(self.index)
+            end
+        end)
+        f.steps[i] = b
+    end
+end
+
+local function welcomePageFade(page, p)
+    page:SetAlpha(p)
+end
 
 local function buildWelcome()
     local f = CreateFrame("Frame", WELCOME_NAME, UIParent)
     f:SetSize(WEL_W, WEL_H)
-    f:SetPoint("CENTER", UIParent, "CENTER", 0, 30)
+    f:SetPoint("CENTER", UIParent, "CENTER", 0, 20)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:SetToplevel(true)
     f:SetClampedToScreen(true)
@@ -966,112 +1527,161 @@ local function buildWelcome()
     f:SetScript("OnDragStart", function(self) self:StartMoving() end)
     f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
     f:Hide()
+    f.step, f.seen, f.pages = 1, {}, {}
 
     local shadow = W.Shadow(f, 18, 22, 4)
     shadow:SetColor(C.black, 0.9)
     W.Round(f, "BACKGROUND", -6, CORNER):SetColor(C.bg)
     W.Stroke(f, "BORDER", 0, CORNER):SetColor(C.white, 0.09)
-    local band = f:CreateTexture(nil, "BACKGROUND", nil, -5)
-    band:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -1)
-    band:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -1)
-    band:SetHeight(104)
-    band:SetColorTexture(C.panel[1], C.panel[2], C.panel[3], 1)
-    local accentLine = f:CreateTexture(nil, "ARTWORK")
-    accentLine:SetPoint("TOPLEFT", band, "BOTTOMLEFT", 0, 0)
-    accentLine:SetPoint("TOPRIGHT", band, "BOTTOMRIGHT", 0, 0)
-    accentLine:SetHeight(1)
-    accentLine:SetColorTexture(C.accent[1], C.accent[2], C.accent[3], 0.5)
 
-    -- en-tête : logo, titre, sous-titre
-    local logo = f:CreateTexture(nil, "ARTWORK")
-    logo:SetSize(60, 60)
-    logo:SetPoint("TOPLEFT", f, "TOPLEFT", WEL_PAD, -22)
-    logo:SetTexture(ns.LOGO)
-    local glow = W.NewTex(f, TEX.glow, "BACKGROUND", -4)
-    glow:SetSize(130, 130)
-    glow:SetPoint("CENTER", logo, "CENTER", 0, 0)
-    glow:SetVertexColor(C.accent[1], C.accent[2], C.accent[3], 0.22)
-    local title = W.Text(f, "GameFontHighlight", nil, "OVERLAY", 24)
-    title:SetPoint("TOPLEFT", logo, "TOPRIGHT", 16, -6)
-    title:SetText(ns.Tf("Bienvenue dans %s", W.Color("accent", "Platy") .. W.Color("gold", "plus")))
-    local sub = W.Text(f, "GameFontHighlight", C.dim, "OVERLAY", 12)
-    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    sub:SetText(ns.Tf("Le confort tout-en-un pour WoW Forever · v%s", tostring(ns.version or "?")))
+    buildRail(f)
 
-    local intro = W.Text(f, "GameFontHighlight", C.text, "OVERLAY", 13)
-    intro:SetPoint("TOPLEFT", f, "TOPLEFT", WEL_PAD, -122)
-    intro:SetWidth(WEL_W - 2 * WEL_PAD)
-    intro:SetJustifyH("LEFT")
-    intro:SetText(ns.T("Platyplus rassemble les petits plus qui rendent le jeu fluide. Tout est déjà réglé pour bien démarrer ; chaque fonction se coupe ou se règle dans les options."))
+    local close = W.CloseGlyphButton(f, 22, function() f:Hide() end)
+    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, -14)
+    f.close = close
 
-    -- six tuiles
-    for i, feat in ipairs(FEATURES) do
-        local col, row = (i - 1) % 2, floor((i - 1) / 2)
-        local tile = CreateFrame("Frame", nil, f)
-        tile:SetSize(TILE_W, TILE_H)
-        tile:SetPoint("TOPLEFT", f, "TOPLEFT", WEL_PAD + col * (TILE_W + 14), -(172 + row * (TILE_H + 10)))
-        W.Round(tile, "BACKGROUND", 1, 8):SetColor(C.card)
-        local icon = tile:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(38, 38)
-        icon:SetPoint("TOPLEFT", tile, "TOPLEFT", 14, -14)
-        if feat.icon then
-            icon:SetTexture(feat.icon)
-            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        else
-            icon:SetTexture(ns.LOGO)
-        end
-        local t = W.Text(tile, "GameFontHighlight", C.text, "OVERLAY", 13)
-        t:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, 1)
-        t:SetWidth(TILE_W - 14 - 38 - 12 - 12)
-        t:SetJustifyH("LEFT")
-        t:SetWordWrap(false)
-        t:SetText(ns.T(feat.title))
-        local d = W.Text(tile, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
-        d:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -5)
-        d:SetWidth(TILE_W - 14 - 38 - 12 - 12)
-        d:SetJustifyH("LEFT")
-        d:SetJustifyV("TOP")
-        d:SetText(ns.T(feat.text))
+    -- zone des pages
+    local body = CreateFrame("Frame", nil, f)
+    body:SetPoint("TOPLEFT", f, "TOPLEFT", RAIL_W + WEL_PAD, -BODY_TOP)
+    body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -WEL_PAD, FOOT_H)
+    f.body = body
+
+    -- pied : filet, compteur, boutons (un jeu de boutons par situation : début, milieu, fin)
+    local rule = f:CreateTexture(nil, "ARTWORK")
+    rule:SetHeight(1)
+    rule:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", RAIL_W + WEL_PAD, FOOT_H - 2)
+    rule:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -WEL_PAD, FOOT_H - 2)
+    rule:SetColorTexture(1, 1, 1, 0.06)
+    local counter = W.Text(f, "GameFontHighlightSmall", C.dim, "OVERLAY", 12)
+    counter:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", RAIL_W + WEL_PAD, 30)
+    f.counter = counter
+
+    local function nav(opts)
+        local b = W.Button(f, opts)
+        b:Hide()
+        return b
     end
-
-    -- pied : boutons et rappel des commandes
-    local open = W.Button(f, {
-        text = "Ouvrir les options", width = 190, height = 34, primary = true,
+    f.next = nav({ text = "Suivant", width = 150, height = 34, primary = true,
+        onClick = function() f:ShowStep(f.step + 1) end })
+    f.start = nav({ text = "Commencer la visite", width = 200, height = 34, primary = true,
+        onClick = function() f:ShowStep(2) end })
+    f.open = nav({ text = "Ouvrir les options", width = 190, height = 34, primary = true,
         onClick = function()
             f:Hide()
             UI:Open()
-        end,
-    })
-    open:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -WEL_PAD, 24)
-    local go = W.Button(f, {
-        text = "C'est parti", width = 140, height = 34,
-        onClick = function() f:Hide() end,
-    })
-    go:SetPoint("RIGHT", open, "LEFT", -10, 0)
-    local hint = W.Text(f, "GameFontHighlightSmall", C.off, "OVERLAY", 11)
-    hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", WEL_PAD, 26)
-    hint:SetWidth(WEL_W - 2 * WEL_PAD - 190 - 10 - 140 - 16)
-    hint:SetJustifyH("LEFT")
-    hint:SetText(ns.T("/pp : ouvrir les options\n/pp bienvenue : revoir cette page"))
-    f.open, f.go = open, go
+        end })
+    f.back = nav({ text = "Précédent", width = 130, height = 34,
+        onClick = function() f:ShowStep(f.step - 1) end })
+    f.go = nav({ text = "Passer la visite", width = 160, height = 34,
+        onClick = function() f:Hide() end })
+    f.finish = nav({ text = "Terminer", width = 130, height = 34,
+        onClick = function() f:Hide() end })
+    for _, b in ipairs({ f.next, f.start, f.open }) do
+        b:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -WEL_PAD, 20)
+    end
+    f.back:SetPoint("RIGHT", f.next, "LEFT", -10, 0)
+    f.go:SetPoint("RIGHT", f.start, "LEFT", -10, 0)
+    f.finish:SetPoint("RIGHT", f.open, "LEFT", -10, 0)
+
+    -- affiche l'étape i (page construite à sa première visite)
+    function f:ShowStep(i)
+        i = max(1, min(#TOUR, floor(tonumber(i) or 1)))
+        W.CancelCapture()
+        local step = TOUR[i]
+        local page = self.pages[i]
+        if not page then
+            page = CreateFrame("Frame", nil, body)
+            page:SetPoint("TOPLEFT", body, "TOPLEFT", 0, 0)
+            page:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", 0, 0)
+            -- protégé (comme Pages:Create) : une erreur dans une page ne bloque ni la visite ni la navigation
+            local build = (step.kind == "intro" and buildIntroPage) or (step.kind == "done" and buildDonePage)
+                or (step.kind == "modes" and buildModesPage) or buildFeaturePage
+            local ok, err = pcall(build, self, page, step)
+            if not ok then geterrorhandler()(err) end
+            self.pages[i] = page
+        end
+        for j, p in pairs(self.pages) do
+            if j ~= i then p:Hide() end
+        end
+        self.step = i
+        self.seen[i] = true
+        page:Show()
+        for _, w in ipairs(page.widgets or {}) do
+            if w.Refresh then w:Refresh() end
+        end
+        if self:IsVisible() then
+            page:SetAlpha(0)
+            W.Animate(page, 0.18, welcomePageFade)
+        else
+            page:SetAlpha(1)
+        end
+        for _, b in ipairs(self.steps) do paintStep(b) end
+        local first, last = (i == 1), (i == #TOUR)
+        self.start:SetShown(first)
+        self.go:SetShown(first)
+        self.next:SetShown(not first and not last)
+        self.back:SetShown(not first and not last)
+        self.open:SetShown(last)
+        self.finish:SetShown(last)
+        counter:SetText(ns.Tf("Étape %d sur %d", i, #TOUR))
+    end
 
     f:SetScript("OnShow", function() W.Sound("open") end)
-    f:SetScript("OnHide", function() GameTooltip:Hide() end)
+    f:SetScript("OnHide", function(self)
+        W.CancelCapture()
+        GameTooltip:Hide()
+        -- visite fermée (pas reconstruite pour une autre langue) : les dictionnaires inutiles sont libérés
+        if not self.switching and ns.Locale and ns.Locale.Release then ns.Locale.Release() end
+    end)
 
     -- Échap la ferme : UISpecialFrames seulement (voir la fenêtre d'options : pas de RegisterGameMenuEscHandler)
-    if UISpecialFrames then table.insert(UISpecialFrames, WELCOME_NAME) end
+    if UISpecialFrames then
+        local listed = false
+        for _, name in ipairs(UISpecialFrames) do if name == WELCOME_NAME then listed = true end end
+        if not listed then table.insert(UISpecialFrames, WELCOME_NAME) end
+    end
     return f
 end
 
-function UI:ShowWelcome()
+-- langue choisie dans la visite : appliquée tout de suite (visite reconstruite dans la nouvelle langue) si son
+-- dictionnaire est encore chargé, sinon gardée pour le prochain /reload (la page d'accueil le dit, avec un bouton)
+function UI:SetTourLanguage(code)
+    if not ns.db or (InCombatLockdown and InCombatLockdown()) then return end
+    W.Sound("click")
+    ns:Set("language", code)
+    local old = self.welcome
+    if ns.Locale.Switch(code) then
+        self.langSwitched = "live"
+        if old then
+            old.switching = true
+            old:Hide()
+            old.switching = nil
+        end
+        self.welcome = nil
+        self:ShowWelcome(1)
+    else
+        self.langSwitched = "reload"
+        if old and old.pages[1] then
+            old.pages[1]:Hide()
+            old.pages[1] = nil
+            old:ShowStep(1)
+        end
+    end
+end
+
+-- step : étape à afficher (par défaut : celle où un lien vers les options l'avait fermée, sinon le début)
+function UI:ShowWelcome(step)
     if not ns.db then return end
     if not self.welcome then self.welcome = buildWelcome() end
-    self.welcome:Show()
-    self.welcome:Raise()
+    local f = self.welcome
+    f:ShowStep(step or f.resume or 1)
+    f.resume = nil
+    f:Show()
+    f:Raise()
     if not ns.db.welcomeSeen then ns:Set("welcomeSeen", true) end
 end
 
--- première connexion avec Platyplus : la présentation s'ouvre une seule fois, un instant après l'arrivée en jeu
+-- première connexion avec Platyplus : la visite s'ouvre une seule fois, un instant après l'arrivée en jeu
 local function maybeWelcome()
     if not ns.db or ns.db.welcomeSeen then return end
     if InCombatLockdown() then

@@ -5,13 +5,13 @@
 --  * thème partagé (couleurs, médias, sources du flux) : tous les modules visuels s'en servent
 local ADDON, ns = ...
 
-ns.version = "0.3.0"
+ns.version = "1.0.0"
 
 -- Images de l'addon (Media/*.tga, générées par dev/make_media.py)
 ns.MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\"
 ns.LOGO = ns.MEDIA .. "Logo"
 
--- Thème commun : interface, flux, barre de ressource et icône utilisent ces couleurs (r, g, b[, a])
+-- Thème commun : interface, flux, alertes et icône utilisent ces couleurs (r, g, b[, a])
 ns.THEME = {
     accent  = { 0.20, 0.80, 1.00 },   -- bleu Platyplus
     accent2 = { 0.10, 0.45, 0.65 },
@@ -121,21 +121,12 @@ local DEFAULTS = {
     sparkleQuestObjects = false, -- les objets de quête du monde brillent aussi (le jeu en marque déjà la plupart)
     sparkleCorpses = true,   -- un cadavre qui a encore du butin pour toi brille à l'approche, après le combat
 
-    -- Ressources
-    powerPlayer   = true,    -- chiffre de la ressource sur le portrait du joueur
-    powerTarget   = false,   -- et sur celui de la cible
-    powerFormat   = "cur",   -- "cur" = 45 ; "curmax" = 45 / 100
-    powerPos      = "BOTTOM",-- TOP, CENTER ou BOTTOM
-    powerSize     = 14,
-    spellCost     = true,    -- coût en ressource sur chaque sort des barres d'action
-    spellCostMana = false,   -- afficher aussi les coûts en mana
-    spellCostPos  = "TOPLEFT",-- TOPLEFT, BOTTOMLEFT, TOP ou CENTER
-    spellCostSize = 11,
+    -- Barre de coups blancs
     swingBar      = true,    -- barre de coups blancs (minuteur d'attaque automatique), en combat
     swingOffHand  = true,    -- et une fine barre pour la main gauche
     swingWidth    = 240,
     swingX        = 0,       -- décalage depuis le centre de l'écran
-    swingY        = -275,    -- sous la barre de ressource et ses sorts si elle est allumée
+    swingY        = -275,    -- sous le personnage
     swingLocked   = true,
     procAlert     = true,    -- alerte de proc (Fulgurance, Vengeance...) avec la touche à presser (Procs.lua)
     procScale     = 1,
@@ -226,18 +217,6 @@ local DEFAULTS = {
 
     -- Flux flottant (style)
     feedGrow      = "UP",    -- "UP" : les nouvelles lignes poussent les anciennes vers le haut ; "DOWN" : vers le bas
-
-    -- Barre de ressource (HUD lisible sous le personnage)
-    hud           = false,   -- coupée par défaut (retour du joueur : le coût sur les sorts suffit)
-    hudCombatOnly = false,   -- n'apparaît qu'en combat ou quand la ressource n'est pas au repos
-    hudWidth      = 240,
-    hudScale      = 1,
-    hudX          = 0,       -- décalage depuis le centre de l'écran
-    hudY          = -170,
-    hudLocked     = true,
-    hudMarkers    = true,    -- repères des coûts de tes sorts sur la barre
-    hudSpells     = true,    -- icônes de tes sorts : allumées quand tu as assez de ressource
-    hudSpellCount = 8,       -- nombre maximum d'icônes (assez pour voir aussi les sorts chers, grisés tant que la rage manque)
 
     -- Mana du healer (HealerMana.lua) : la mana du soigneur de ton groupe, dans une barre posée où tu veux
     healerBar     = false,   -- coupée par défaut : on l'allume dans les options
@@ -336,8 +315,10 @@ local DEFAULTS = {
     uiX           = 0,
     uiY           = 0,
     uiTab         = 1,
-    language      = "auto",  -- langue de l'addon : "auto" (celle du client) ou frFR/enUS/deDE/esES/itIT/ptBR/ruRU (/reload pour appliquer)
-    welcomeSeen   = false,   -- la présentation « Qu'est-ce que Platyplus ? » a déjà été montrée
+    language      = "enUS",  -- langue de l'addon : anglais au départ (choix proposé en tête de la visite guidée),
+                             -- "auto" (celle du client) ou frFR/enUS/deDE/esES/itIT/ptBR/ruRU (/reload pour appliquer)
+    welcomeSeen   = false,   -- la visite guidée a déjà été montrée
+    mode          = "recommended", -- dernier mode prêt à l'emploi choisi (ns.MODES) : la base des réglages personnalisés
     debug         = false,
 }
 ns.DEFAULTS = DEFAULTS
@@ -404,12 +385,145 @@ local LISTS = { chatFilterWords = true, tradPersos = true, neverSell = true, alw
 function ns:ResetAll(keepLists)
     local keys = {}
     for key, default in pairs(DEFAULTS) do
-        if not (keepLists and LISTS[key]) then
+        -- la langue choisie n'est jamais remise à zéro (sinon : anglais au /reload suivant)
+        if not (keepLists and LISTS[key]) and key ~= "language" then
             self.db[key] = copy(default)
             keys[#keys + 1] = key
         end
     end
     for _, key in ipairs(keys) do self:Notify(key) end
+end
+
+---------------------------------------------------------------------------
+-- Modes prêts à l'emploi (ns.MODES, ns:ApplyMode, ns:CurrentMode) : une base de réglages en un clic, choisie dans la
+-- visite guidée, l'onglet « Modes » ou par /pp mode. Un mode n'allume ou ne coupe que des fonctions : jamais la touche,
+-- les listes, les positions, les tailles ni les couleurs. Le joueur ajuste ensuite ce qu'il veut ; le mode actuel est
+-- celui dont toutes les valeurs correspondent encore, sinon les réglages sont « personnalisés » (base : ns.db.mode).
+---------------------------------------------------------------------------
+-- les fonctions que règlent les modes ; le mode Minimal les coupe toutes (sauf ce que son `set` garde)
+local MODE_KEYS = {
+    "interact", "instantLoot", "confirmBind", "floatLoot", "sellFeed", "gainFeed", "lootRolls",
+    "sparkleLoot", "sparkleHerbs", "sparkleCorpses", "sparkleQuestObjects",
+    "sellJunk", "sellGear", "autoRepair", "ahAssist", "ahTooltip", "craftPrices", "autoOpenMail",
+    "bagWarn", "durabilityWarn", "acceptInvites", "declineGuildInvites", "declineDuels", "acceptSummon", "acceptRes",
+    "hideErrors", "hideTalkingHead", "hideXpBar", "cameraZoom", "autoQuest", "questCards",
+    "swingBar", "procAlert", "procBlock", "buffShout", "buffAllies", "buffAsk", "mobControlTooltip", "plates", "threatWindow",
+    "healerBar", "questWindow", "bagWindow", "charWindow", "mapQuestPage", "charIlvl", "bagIlvl",
+    "chatWindow", "chatSkin", "chatLinks", "chatShortChannels", "chatCopyButton", "chatTimestamps", "chatClassColors",
+    "chatMentions", "chatHistory", "chatSentHistory", "chatSpam", "launcher", "dock",
+}
+local MODE_MAIN = {}
+for _, key in ipairs(MODE_KEYS) do MODE_MAIN[key] = true end
+
+-- Textes en français = clés de traduction (traduits à l'affichage). set : valeurs qui diffèrent des réglages par
+-- défaut ; off : toutes les fonctions de MODE_KEYS coupées, sauf celles de set. Le reste = DEFAULTS.
+ns.MODES = {
+    { id = "recommended", name = "Recommandé", icon = "logo",
+      desc = "Les fonctions utiles, sans rien décider à ta place. Le réglage de départ.",
+      tip = "Les fonctions utiles sont allumées : la touche d'interaction, le loot instantané, la vente et la réparation, "
+          .. "les alertes de combat, les plates de menace, les fenêtres Platyplus, le chat amélioré. Ce qui décide à ta "
+          .. "place reste coupé : invitations, invocations, duels, courrier.",
+      set = {} },
+    { id = "complete", name = "Complet", icon = "Interface\\Icons\\Spell_Nature_Lightning",
+      desc = "Tout allumé, avec les automatismes : invitations, invocations, courrier…",
+      tip = "Le mode Recommandé, plus : les groupes de tes amis et de ta guilde acceptés, les invocations et les "
+          .. "résurrections acceptées, les duels refusés, tout le courrier ouvert d'un coup, les quêtes acceptées et "
+          .. "rendues sans appuyer sur la touche, la barre de mana du healer, la caméra plus loin, les têtes parlantes "
+          .. "masquées, les objets de quête qui brillent.",
+      set = { acceptInvites = true, acceptSummon = true, acceptRes = true, declineDuels = true, autoOpenMail = true,
+              autoQuest = true, healerBar = true, cameraZoom = true, hideTalkingHead = true, sparkleQuestObjects = true } },
+    { id = "immersive", name = "Immersif", icon = "Interface\\Icons\\INV_Misc_Map_01",
+      desc = "Moins d'écrans et de chiffres, plus de jeu. Les automatismes discrets restent.",
+      tip = "Coupés : les alertes de combat, la barre de coups blancs, le butin affiché à l'écran, la fenêtre de menace, "
+          .. "la barre d'infos, les plates colorées, les contrôles des mobs dans l'infobulle, le niveau d'objet et les "
+          .. "messages d'erreur rouges. Restent : la touche (tu choisis toi-même tes réponses "
+          .. "aux PNJ), le loot instantané, la vente, les grandes fenêtres de quête avec leur histoire dépliée, la "
+          .. "caméra plus loin.",
+      set = { floatLoot = false, swingBar = false, procAlert = false, procBlock = false, buffShout = false,
+              buffAllies = false, mobControlTooltip = false, plates = false, threatWindow = false, dock = false,
+              charIlvl = false, bagIlvl = false, hideErrors = true, cameraZoom = true, gossipOptions = false,
+              questPageStory = true, lootRollsAuto = false } },
+    { id = "minimal", name = "Minimal", icon = "Interface\\Icons\\Spell_Magic_FeatherFall", off = true,
+      desc = "Tout coupé sauf l'icône : tu allumes seulement ce que tu veux.",
+      tip = "Toutes les fonctions sont coupées, sauf l'icône Platyplus qui ouvre les options. Le jeu redevient presque "
+          .. "comme sans l'addon ; allume ensuite ce que tu veux, onglet par onglet.",
+      set = { launcher = true } },
+}
+
+local modeKeys   -- MODE_KEYS + tout ce que règle un mode (calculé une fois)
+local function controlledKeys()
+    if modeKeys then return modeKeys end
+    local seen = {}
+    modeKeys = {}
+    local function add(key)
+        if not seen[key] and DEFAULTS[key] ~= nil then
+            seen[key] = true
+            modeKeys[#modeKeys + 1] = key
+        end
+    end
+    for _, key in ipairs(MODE_KEYS) do add(key) end
+    for _, mode in ipairs(ns.MODES) do
+        local extra = {}
+        for key in pairs(mode.set) do extra[#extra + 1] = key end
+        table.sort(extra)
+        for _, key in ipairs(extra) do add(key) end
+    end
+    return modeKeys
+end
+ns.ModeKeys = controlledKeys
+
+function ns:GetMode(id)
+    for _, mode in ipairs(ns.MODES) do
+        if mode.id == id then return mode end
+    end
+end
+
+-- valeur d'un réglage dans un mode
+function ns:ModeValue(mode, key)
+    if type(mode) == "string" then mode = self:GetMode(mode) end
+    if not mode then return nil end
+    if mode.set[key] ~= nil then return mode.set[key] end
+    if mode.off and MODE_MAIN[key] then return false end
+    return DEFAULTS[key]
+end
+
+-- mode dont toutes les valeurs correspondent aux réglages actuels (nil = réglages personnalisés)
+function ns:CurrentMode()
+    if not self.db then return nil end
+    for _, mode in ipairs(ns.MODES) do
+        local same = true
+        for _, key in ipairs(controlledKeys()) do
+            if self.db[key] ~= self:ModeValue(mode, key) then
+                same = false
+                break
+            end
+        end
+        if same then return mode.id, mode end
+    end
+end
+
+-- applique un mode ; renvoie true et le nombre de réglages changés. Refusé en combat : certaines fonctions posent
+-- des liaisons de touches ou touchent à des cadres que le jeu protège en combat.
+function ns:ApplyMode(id)
+    local mode = self:GetMode(id)
+    if not mode or not self.db then return false end
+    if InCombatLockdown and InCombatLockdown() then
+        self:Print("impossible en combat : réessaie après le combat")
+        return false
+    end
+    local changed = {}
+    for _, key in ipairs(controlledKeys()) do
+        local value = self:ModeValue(mode, key)
+        if self.db[key] ~= value then
+            self.db[key] = value
+            changed[#changed + 1] = key
+        end
+    end
+    self.db.mode = id
+    -- toutes les valeurs d'abord, puis les notifications : chaque module voit l'état final (ex. interact + dialog)
+    for _, key in ipairs(changed) do self:Notify(key) end
+    self:Notify("mode")
+    return true, #changed
 end
 
 ---------------------------------------------------------------------------
@@ -438,12 +552,12 @@ local HELP = {
     { "config", "ouvre la fenêtre d'options" },
     { "loot|float|interact|dialog|gossip|junk [on|off]", "active / coupe une fonction" },
     { "etincelles [on|off]", "état des étincelles (plantes, cadavres, objets de quête) | toutes allumées / coupées" },
-    { "power|cost [on|off]", "ressource sur le portrait | coût des sorts sur les barres" },
     { "eat [TOUCHE|off|debug]", "touche pour manger (potion de soins en combat) : voir, changer, couper, diagnostic" },
     { "drink [TOUCHE|off]", "touche pour boire (potion de mana en combat) : voir, changer, couper" },
     { "donjons [etat|options]", "journal des donjons : l'ouvre | ce qu'il fait | ses réglages (aussi /dj)" },
     { "fenetres [reset]", "fenêtres de quête, de sacs et du personnage : état | remise en place" },
-    { "bienvenue", "réaffiche la présentation de Platyplus" },
+    { "bienvenue", "relance la visite guidée de Platyplus (aussi /pp tuto)" },
+    { "mode [recommande|complet|immersif|minimal]", "mode prêt à l'emploi : voir le mode actuel | en choisir un" },
     { "copier", "ouvre le chat dans une zone de texte à copier" },
     { "chat", "état du chat amélioré (look, mémoire, anti-spam)" },
     { "trad [on|off]", "journal du chat pour le traducteur (programme Traducteur Platyplus)" },
@@ -456,7 +570,7 @@ local HELP = {
     { "mob", "contrôles du mob ciblé (étourdir, ralentir...) et leur rythme" },
     { "plates [on|off|tank|dps|auto]", "plates des mobs : état | allume/éteint | rôle (couleurs de menace)" },
     { "menace [on|off|test|reset]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remet en place" },
-    { "demo", "montre le flux, la barre de ressource et les options (pour une capture)" },
+    { "demo", "montre le flux, la barre de coups blancs et les options (pour une capture)" },
     { "cartes", "aperçu des cartes de récompense de quête (objets d'exemple)" },
     { "perf", "mémoire et temps de calcul de Platyplus mesurés par le jeu" },
     { "icon [on|off|reset]", "icône Platyplus : montrer, cacher, remettre en place" },
@@ -498,15 +612,13 @@ commands.interact = switchCommand("interact", "interaction rapide")
 commands.dialog   = switchCommand("dialog", "F valide quêtes et dialogues")
 commands.gossip   = switchCommand("gossipOptions", "F choisit la 1re option de dialogue")
 commands.junk     = switchCommand("sellJunk", "vente des gris")
-commands.power    = switchCommand("powerPlayer", "ressource sur le portrait")
-commands.cost     = switchCommand("spellCost", "coût des sorts sur les barres d'action")
 
--- /pp demo : montre tout d'un coup (flux de butin, barre de ressource, options) pour une capture d'écran
+-- /pp demo : montre tout d'un coup (flux de butin, barre de coups blancs, options) pour une capture d'écran
 commands.demo = function()
     if ns.Float and ns.Float.Test then ns.Float:Test() end
-    if ns.ResourceBar and ns.ResourceBar.Preview then ns.ResourceBar:Preview(20) end
+    if ns.SwingBar and ns.SwingBar.Preview then ns.SwingBar:Preview(20) end
     if ns.UI and ns.UI.Open then ns.UI:Open() end
-    ns:Print("démo : flux de butin, barre de ressource (20 s) et options affichés. Impr. écran = capture "
+    ns:Print("démo : flux de butin, barre de coups blancs (20 s) et options affichés. Impr. écran = capture "
         .. "(enregistrée dans World of Warcraft\\_forever_\\Screenshots).")
 end
 
@@ -767,11 +879,51 @@ commands.journal = commands.donjons
 commands.dungeons = commands.donjons
 
 
--- /pp bienvenue (ou welcome) : réaffiche la présentation de Platyplus
+-- /pp bienvenue (ou welcome, tuto, intro, tour) : relance la visite guidée de Platyplus
 commands.bienvenue = function()
-    if ns.UI and ns.UI.ShowWelcome then ns.UI:ShowWelcome() else ns:Print("présentation indisponible") end
+    if ns.UI and ns.UI.ShowWelcome then ns.UI:ShowWelcome() else ns:Print("visite guidée indisponible") end
 end
 commands.welcome = commands.bienvenue
+commands.tuto = commands.bienvenue
+commands.intro = commands.bienvenue
+commands.tour = commands.bienvenue
+
+-- /pp mode [nom] : mode actuel et liste | applique un mode (recommande, complet, immersif, minimal)
+local MODE_ALIASES = {
+    recommande = "recommended", ["recommandé"] = "recommended", defaut = "recommended", ["défaut"] = "recommended",
+    default = "recommended", complet = "complete", full = "complete", immersif = "immersive", min = "minimal",
+    rien = "minimal",
+}
+commands.mode = function(arg)
+    arg = (arg or ""):lower():match("^%s*(.-)%s*$")
+    if arg == "" then
+        local _, mode = ns:CurrentMode()
+        if mode then
+            ns:Print(ns.Tf("mode actuel : %s", ns.T(mode.name)))
+        else
+            local base = ns:GetMode(ns.db.mode) or ns.MODES[1]
+            ns:Print(ns.Tf("réglages personnalisés (base : %s)", ns.T(base.name)))
+        end
+        ns:Print("modes : /pp mode recommande | complet | immersif | minimal (aussi dans /pp > Modes)")
+        return
+    end
+    local id = MODE_ALIASES[arg] or arg
+    local mode = ns:GetMode(id)
+    if not mode then
+        for _, m in ipairs(ns.MODES) do
+            if ns.T(m.name):lower() == arg then mode = m end
+        end
+    end
+    if not mode then
+        ns:Print("mode inconnu : /pp mode recommande | complet | immersif | minimal")
+        return
+    end
+    local ok, n = ns:ApplyMode(mode.id)
+    if ok then
+        ns:Print(ns.Tf("mode %s appliqué (%d réglage(s) changé(s)). Ajuste le reste avec /pp.", ns.T(mode.name), n))
+    end
+end
+commands.modes = commands.mode
 
 -- /pp icon [on|off|reset] : montre, cache ou remet en place l'icône flottante
 commands.icon = function(arg)
@@ -962,19 +1114,25 @@ loader:SetScript("OnEvent", function(self, _, name)
         "guideScale", "guideAlpha", "guidePos",
         "mapStitch", "mapReveal", "mapRevealDim", "mapDungeons", "mapFlights", "mapBoats", "mapQuestDark", "platesRound",
         -- carte OpenMap, alerte des filons et étincelles de minerai retirées (2026-11-14)
-        "openMap", "mapSkin", "veinAlert", "veinWatch", "veinSound", "veinMinimap", "veinMode", "sparkleOre" }) do PlatyplusDB[old] = nil end
+        "openMap", "mapSkin", "veinAlert", "veinWatch", "veinSound", "veinMinimap", "veinMode", "sparkleOre",
+        "powerPlayer", "powerTarget", "powerFormat", "powerPos", "powerSize", "spellCost", "spellCostMana", "spellCostPos",
+        "spellCostSize", "hud", "hudCombatOnly", "hudWidth", "hudScale", "hudX", "hudY", "hudLocked", "hudMarkers", "hudSpells",
+        "hudSpellCount" }) do PlatyplusDB[old] = nil end
     -- (guide retiré : sa place et sa fenêtre étaient gardées par personnage)
     if type(PlatyplusCharDB) == "table" then
         PlatyplusCharDB.guide, PlatyplusCharDB.guideWindow = nil, nil
         PlatyplusCharDB.openMap = nil   -- réglages de la carte OpenMap retirée, gardés par personnage
     end
+    -- onglet « Modes » ajouté en tête (2026-11-14) : l'onglet mémorisé (un numéro) des joueurs existants recule d'un
+    -- cran, une seule fois (la clé `mode` arrive avec cette version)
+    if PlatyplusDB.mode == nil and tonumber(PlatyplusDB.uiTab) then PlatyplusDB.uiTab = tonumber(PlatyplusDB.uiTab) + 1 end
     for k, v in pairs(DEFAULTS) do
         if PlatyplusDB[k] == nil then PlatyplusDB[k] = copy(v) end
     end
     ns.db = PlatyplusDB
     if ns.SetupLocale then ns:SetupLocale() end   -- langue fixée avant tout texte (Locale.lua)
 
-    for _, module in ipairs({ "Float", "Loot", "Sparkles", "Interact", "Dialog", "Junk", "Auction", "Prices", "Craft", "Misc", "Eat", "Chat", "ChatPlus", "ChatWindow", "Trad", "Resources", "ResourceBar", "HealerMana", "SwingBar", "Procs", "Buffs", "MobControls", "Plates", "Threat", "Gains", "Quests",
+    for _, module in ipairs({ "Float", "Loot", "Sparkles", "Interact", "Dialog", "Junk", "Auction", "Prices", "Craft", "Misc", "Eat", "Chat", "ChatPlus", "ChatWindow", "Trad", "HealerMana", "SwingBar", "Procs", "Buffs", "MobControls", "Plates", "Threat", "Gains", "Quests",
         "QuestCards", "QuestWindow", "BagWindow", "CharWindow", "GameSettings", "Tweaks", "QuestPage", "DungeonSkin", "DungeonPlus", "LootRolls", "Launcher", "UI" }) do
         -- un module qui plante au démarrage ne doit pas empêcher les suivants (icône, fenêtre d'options) : l'erreur
         -- part quand même dans le gestionnaire d'erreurs du jeu

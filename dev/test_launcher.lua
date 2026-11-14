@@ -375,10 +375,10 @@ for _, f in ipairs(S(menu).frames) do
     if f.key then rows[f.key] = f; nrows = nrows + 1 end
 end
 check(nrows == 8, "8 interrupteurs (" .. nrows .. ")")
-for _, key in ipairs({ "interact", "instantLoot", "sellJunk", "autoQuest", "hud", "floatLoot", "dock", "launcherLocked" }) do
+for _, key in ipairs({ "interact", "instantLoot", "sellJunk", "autoQuest", "floatLoot", "dock", "launcherLocked" }) do
     check(rows[key] and rows[key].on == (ns.db[key] and true or false), "interrupteur " .. key .. " à jour")
 end
-for _, key in ipairs({ "interact", "instantLoot", "sellJunk", "autoQuest", "hud", "floatLoot" }) do
+for _, key in ipairs({ "interact", "instantLoot", "sellJunk", "autoQuest", "floatLoot" }) do
     local before = ns.db[key]
     M.fire(rows[key], "OnClick", "LeftButton")
     check(ns.db[key] == not before and rows[key].on == not before, "clic : " .. key .. " -> " .. tostring(ns.db[key]))
@@ -396,7 +396,7 @@ check(ns.db.launcherLocked == true and rows.launcherLocked.on, "icône verrouill
 ns:Set("autoQuest", true)
 check(rows.autoQuest.on == true, "réglage changé ailleurs : interrupteur suit")
 ns:Set("autoQuest", false)
-M.fire(rows.hud, "OnEnter"); M.fire(rows.hud, "OnLeave")
+M.fire(rows.floatLoot, "OnEnter"); M.fire(rows.floatLoot, "OnLeave")
 
 M.fireEvent("GLOBAL_MOUSE_DOWN", "LeftButton")
 check(not L:IsMenuShown() and not S(menu).events.GLOBAL_MOUSE_DOWN, "clic ailleurs : menu fermé, écoute coupée")

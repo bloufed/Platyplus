@@ -8,7 +8,7 @@ local Pages = {}
 ns.Pages = Pages
 
 local W = ns.W
-local floor = math.floor
+local floor, max = math.floor, math.max
 
 ---------------------------------------------------------------------------
 -- Petits outils
@@ -26,10 +26,6 @@ local function whenAuction() return db("ahAssist") end
 local function whenRepair() return db("autoRepair") end
 local function whenBagWarn() return db("bagWarn") end
 local function whenZoom() return db("cameraZoom") end
-local function whenHud() return db("hud") end
-local function whenHudSpells() return db("hud") and db("hudSpells") end
-local function whenPortrait() return db("powerPlayer") or db("powerTarget") end
-local function whenCost() return db("spellCost") end
 local function whenLauncher() return db("launcher") end
 local function whenDock() return db("launcher") and db("dock") end
 local function whenSparklesNear()
@@ -711,100 +707,150 @@ local function buildSell(p)
 end
 
 ---------------------------------------------------------------------------
--- 4. Ressources
+-- 4. Combat : coups blancs, rappel de buffs, (fenêtre de menace : buildThreat), mana du healer, contrôles des mobs
 ---------------------------------------------------------------------------
-local function buildResources(p)
-    local c = p:Card("Barre de ressource", "Une barre claire sous ton personnage : ta rage, ton énergie ou ton mana d'un coup d'œil, "
-        .. "avec des repères aux coûts de tes sorts.")
+-- Barre de coups blancs (SwingBar, ResourceBar.lua)
+local function buildSwing(p)
+    local c = p:Card("Barre de coups blancs", "Le minuteur de ton attaque automatique : la barre se remplit jusqu'au prochain "
+        .. "coup blanc. Pratique pour placer Frappe héroïque ou Heurtoir au bon moment.")
     c:Switch({
-        key = "hud",
-        label = "Afficher la barre de ressource",
-        tip = "Affiche une grande barre lisible de ta ressource principale, sous ton personnage.",
+        key = "swingBar",
+        label = "Barre de coups blancs",
+        desc = "En combat ; dorée quand Frappe héroïque attend le prochain coup.",
+        tip = "Se remplit à la vitesse de ton arme et repart à chaque coup blanc (le jeu le signale lui-même). "
+            .. "Le temps restant s'affiche à droite. Elle devient dorée quand Frappe héroïque ou Enchaînement attend le "
+            .. "prochain coup, et pâlit quand ta cible est hors de portée.",
     })
     c:Switch({
-        key = "hudCombatOnly",
-        label = "Seulement en combat",
-        desc = "Ou quand la ressource n'est pas au repos (rage qui retombe, énergie qui remonte).",
+        key = "swingOffHand",
+        label = "Main gauche aussi",
+        desc = "Une fine barre en dessous si tu as deux armes.",
         indent = 1,
-        enabled = whenHud,
-        requires = "Nécessite « Afficher la barre de ressource ».",
-        tip = "La barre se cache hors combat quand ta ressource est au repos, et réapparaît dès qu'elle bouge.",
-    })
-    c:Switch({
-        key = "hudMarkers",
-        label = "Repères des coûts de mes sorts",
-        indent = 1,
-        enabled = whenHud,
-        requires = "Nécessite « Afficher la barre de ressource ».",
-        tip = "Petits traits sur la barre à la hauteur du coût de tes sorts : tu vois tout de suite ce que tu peux lancer.",
-    })
-    c:Switch({
-        key = "hudSpells",
-        label = "Icônes de mes sorts",
-        desc = "Allumées quand tu as assez de ressource pour les lancer.",
-        indent = 1,
-        enabled = whenHud,
-        requires = "Nécessite « Afficher la barre de ressource ».",
-        tip = "Affiche sous la barre les icônes de tes sorts à coût : elles s'allument quand tu as assez de ressource.",
+        enabled = function() return db("swingBar") end,
+        requires = "Nécessite la barre de coups blancs.",
+        tip = "Avec deux armes, une seconde barre plus fine suit l'arme de la main gauche.",
     })
     c:Slider({
-        key = "hudSpellCount",
-        label = "Nombre d'icônes",
-        min = 1, max = 10, step = 1,
-        format = "%d",
-        indent = 2,
-        enabled = whenHudSpells,
-        requires = "Nécessite « Icônes de mes sorts ».",
-        tip = "Nombre maximum d'icônes de sorts affichées sous la barre.",
-    })
-    c:Slider({
-        key = "hudWidth",
+        key = "swingWidth",
         label = "Largeur",
-        min = 160, max = 400, step = 10,
-        format = pixels,
+        min = 140, max = 400, step = 10,
+        format = "%d px",
         indent = 1,
-        enabled = whenHud,
-        requires = "Nécessite « Afficher la barre de ressource ».",
-        tip = "Largeur de la barre, en points d'interface.",
-    })
-    c:Slider({
-        key = "hudScale",
-        label = "Taille",
-        min = 0.6, max = 2, step = 0.05,
-        format = percent,
-        indent = 1,
-        enabled = whenHud,
-        requires = "Nécessite « Afficher la barre de ressource ».",
-        tip = "Agrandit ou réduit toute la barre (100 % = taille normale).",
+        enabled = function() return db("swingBar") end,
+        requires = "Nécessite la barre de coups blancs.",
+        tip = "Largeur de la barre de coups blancs.",
     })
     c:Buttons({
         {
-            text = "Déplacer la barre", width = 170,
-            getText = function()
-                return db("hudLocked") == false and "Verrouiller la barre" or "Déplacer la barre"
-            end,
-            tip = "Déverrouille la barre pour la glisser où tu veux ; reclique (ou clic droit sur la barre) pour la verrouiller.",
-            onClick = function() call("ResourceBar", "ToggleMove", "barre de ressource indisponible") end,
+            text = "Déplacer", width = 120,
+            getText = function() return db("swingLocked") == false and "Verrouiller" or "Déplacer" end,
+            tip = "Déverrouille la barre pour la glisser où tu veux ; reclique pour la verrouiller.",
+            onClick = function() ns:Set("swingLocked", not db("swingLocked")) end,
         },
         {
             text = "Aperçu", width = 110, primary = true,
-            tip = "Montre la barre quelques secondes, même hors combat ou désactivée, pour voir le résultat.",
-            onClick = function() call("ResourceBar", "Preview", "barre de ressource indisponible") end,
+            tip = "Montre la barre quelques secondes avec des coups simulés à la vitesse de ton arme.",
+            onClick = function()
+                local s = ns.SwingBar
+                if s and s.Preview then s:Preview(6) end
+            end,
         },
         {
             text = "Remettre en place", width = 160,
             tip = "Replace la barre sous ton personnage.",
             onClick = function()
-                if not call("ResourceBar", "ResetPosition") then
-                    ns:Reset("hudX")
-                    ns:Reset("hudY")
+                ns:Reset("swingX")
+                ns:Reset("swingY")
+            end,
+        },
+    })
+end
+
+-- Rappel de buffs (Buffs.lua)
+local function buildBuffs(p)
+    local c = p:Card("Rappel de buffs", "En combat, ton Cri de guerre s'il te manque. Hors combat, ce que tes alliés peuvent "
+        .. "te donner et que tu n'as pas, et un clic droit pour le leur demander.")
+    c:Switch({
+        key = "buffShout",
+        label = "Cri de guerre en combat",
+        desc = "S'il te manque en combat : son icône et sa touche, comme une alerte de proc.",
+        tip = "En combat seulement : si tu n'as pas ton Cri de guerre, son icône apparaît en grand avec la touche à "
+            .. "presser (« Cri de guerre manquant »), bleutée tant que tu n'as pas assez de rage. Elle disparaît dès que "
+            .. "tu cries. Il faut que le Cri de guerre soit rangé sur tes barres. Fonctionne même si l'alerte de proc "
+            .. "est coupée.",
+    })
+    c:Switch({
+        key = "buffAllies",
+        label = "Buffs que mes alliés peuvent me donner",
+        desc = "Hors combat : l'icône du buff manquant avec le nom de l'allié.",
+        tip = "Exemple : un prêtre et un druide dans ton groupe, et tu n'as ni Robustesse ni Marque du fauve : deux "
+            .. "icônes apparaissent au-dessus de ton personnage, avec « Ariane » et « Cléo » dessous. Proposés : "
+            .. "Robustesse (prêtre), Marque du fauve (druide), Intelligence des arcanes (mage, si tu utilises de la "
+            .. "mana), une bénédiction (paladin : puissance, ou sagesse si tu utilises de la mana ; n'importe "
+            .. "laquelle compte). Cachée en combat.",
+    })
+    c:Switch({
+        key = "buffAsk",
+        label = "Demander un buff au clic droit",
+        desc = "Clic droit sur un paladin, un prêtre, un mage… : « Demander un buff » lui chuchote ta demande.",
+        tip = "Exemple : clic droit sur le portrait d'un paladin, « Demander un buff », « Bénédiction des rois » : il "
+            .. "reçoit « Salut, rois stp ? Merci :) » (prêtre : « buff endu », mage : « buff int »…). La liste dépend de sa "
+            .. "classe — paladin : les bénédictions ; prêtre : Robustesse, Esprit divin, Protection contre l'Ombre ; "
+            .. "druide : Marque du fauve, Épines ; mage : Intelligence des arcanes, nourriture, eau ; démoniste : "
+            .. "Respiration interminable, pierre de soins, invocation ; chaman : Respiration aquatique, Marche sur "
+            .. "l'eau. En haut de la liste, « Tous ses buffs » envoie « Salut, buff stp ? Merci :) ». "
+            .. "Marche aussi sur un nom cliqué dans le chat. En instance, si le jeu cache son nom, la demande "
+            .. "part dans le chat du groupe.",
+    })
+    c:Dropdown({
+        key = "buffAskLang",
+        label = "Langue de la demande",
+        indent = 1,
+        enabled = function() return db("buffAsk") end,
+        requires = "Nécessite « Demander un buff au clic droit ».",
+        options = { { value = "fr", text = "Français" }, { value = "en", text = "Anglais" } },
+        tip = "La langue du message envoyé (le menu reste en français). En anglais, avec les abréviations des "
+            .. "joueurs : « Hi, could I get BoK pls? Thanks :) » (Fort, MotW, Int…) ; « Tous ses buffs » : « Hi, "
+            .. "could I get buff pls? Thanks :) ».",
+    })
+    c:Buttons({
+        {
+            text = "Déplacer", width = 120,
+            getText = function() return db("buffLocked") == false and "Verrouiller" or "Déplacer" end,
+            enabled = function() return db("buffAllies") end,
+            requires = "Nécessite « Buffs que mes alliés peuvent me donner ».",
+            tip = "Déverrouille la rangée des buffs à demander pour la glisser où tu veux ; reclique (ou clic droit "
+                .. "dessus) pour la verrouiller.",
+            onClick = function() call("Buffs", "ToggleMove", "rappel de buffs indisponible") end,
+        },
+        {
+            text = "Aperçu", width = 110, primary = true,
+            tip = "Montre la rangée quelques secondes avec deux buffs d'exemple, et écrit dans le chat ce que "
+                .. "Platyplus voit en ce moment (aussi : /pp buffs).",
+            onClick = function()
+                local B = ns.Buffs
+                if not (B and B.Preview) then ns:Print("rappel de buffs indisponible") return end
+                for _, line in ipairs(B:Status()) do ns:Print(line) end
+                B:Preview()
+            end,
+        },
+        {
+            text = "Remettre en place", width = 160,
+            tip = "Replace la rangée au-dessus de ton personnage.",
+            onClick = function()
+                if not call("Buffs", "ResetPosition") then
+                    ns:Reset("buffX")
+                    ns:Reset("buffY")
                 end
             end,
         },
     })
+end
 
+-- Mana du healer du groupe (HealerMana.lua)
+local function buildHealer(p)
     local function whenHealer() return db("healerBar") end
-    c = p:Card("Mana de mon healer", "Une barre de mana pour le soigneur de ton groupe, posée où tu veux à l'écran : "
+    local c = p:Card("Mana de mon healer", "Une barre de mana pour le soigneur de ton groupe, posée où tu veux à l'écran : "
         .. "son nom et « 4 320 / 6 800 ».")
     c:Switch({
         key = "healerBar",
@@ -918,140 +964,11 @@ local function buildResources(p)
             end,
         },
     })
+end
 
-    c = p:Card("Barre de coups blancs", "Le minuteur de ton attaque automatique : la barre se remplit jusqu'au prochain "
-        .. "coup blanc. Pratique pour placer Frappe héroïque ou Heurtoir au bon moment.")
-    c:Switch({
-        key = "swingBar",
-        label = "Barre de coups blancs",
-        desc = "En combat ; dorée quand Frappe héroïque attend le prochain coup.",
-        tip = "Se remplit à la vitesse de ton arme et repart à chaque coup blanc (le jeu le signale lui-même). "
-            .. "Le temps restant s'affiche à droite. Elle devient dorée quand Frappe héroïque ou Enchaînement attend le "
-            .. "prochain coup, et pâlit quand ta cible est hors de portée.",
-    })
-    c:Switch({
-        key = "swingOffHand",
-        label = "Main gauche aussi",
-        desc = "Une fine barre en dessous si tu as deux armes.",
-        indent = 1,
-        enabled = function() return db("swingBar") end,
-        requires = "Nécessite la barre de coups blancs.",
-        tip = "Avec deux armes, une seconde barre plus fine suit l'arme de la main gauche.",
-    })
-    c:Slider({
-        key = "swingWidth",
-        label = "Largeur",
-        min = 140, max = 400, step = 10,
-        format = "%d px",
-        indent = 1,
-        enabled = function() return db("swingBar") end,
-        requires = "Nécessite la barre de coups blancs.",
-        tip = "Largeur de la barre de coups blancs.",
-    })
-    c:Buttons({
-        {
-            text = "Déplacer", width = 120,
-            getText = function() return db("swingLocked") == false and "Verrouiller" or "Déplacer" end,
-            tip = "Déverrouille la barre pour la glisser où tu veux ; reclique pour la verrouiller.",
-            onClick = function() ns:Set("swingLocked", not db("swingLocked")) end,
-        },
-        {
-            text = "Aperçu", width = 110, primary = true,
-            tip = "Montre la barre quelques secondes avec des coups simulés à la vitesse de ton arme.",
-            onClick = function()
-                local s = ns.SwingBar
-                if s and s.Preview then s:Preview(6) end
-            end,
-        },
-        {
-            text = "Remettre en place", width = 160,
-            tip = "Replace la barre sous ton personnage.",
-            onClick = function()
-                ns:Reset("swingX")
-                ns:Reset("swingY")
-            end,
-        },
-    })
-
-    c = p:Card("Rappel de buffs", "En combat, ton Cri de guerre s'il te manque. Hors combat, ce que tes alliés peuvent "
-        .. "te donner et que tu n'as pas, et un clic droit pour le leur demander.")
-    c:Switch({
-        key = "buffShout",
-        label = "Cri de guerre en combat",
-        desc = "S'il te manque en combat : son icône et sa touche, comme une alerte de proc.",
-        tip = "En combat seulement : si tu n'as pas ton Cri de guerre, son icône apparaît en grand avec la touche à "
-            .. "presser (« Cri de guerre manquant »), bleutée tant que tu n'as pas assez de rage. Elle disparaît dès que "
-            .. "tu cries. Il faut que le Cri de guerre soit rangé sur tes barres. Fonctionne même si l'alerte de proc "
-            .. "est coupée.",
-    })
-    c:Switch({
-        key = "buffAllies",
-        label = "Buffs que mes alliés peuvent me donner",
-        desc = "Hors combat : l'icône du buff manquant avec le nom de l'allié.",
-        tip = "Exemple : un prêtre et un druide dans ton groupe, et tu n'as ni Robustesse ni Marque du fauve : deux "
-            .. "icônes apparaissent au-dessus de ton personnage, avec « Ariane » et « Cléo » dessous. Proposés : "
-            .. "Robustesse (prêtre), Marque du fauve (druide), Intelligence des arcanes (mage, si tu utilises de la "
-            .. "mana), une bénédiction (paladin : puissance, ou sagesse si tu utilises de la mana ; n'importe "
-            .. "laquelle compte). Cachée en combat.",
-    })
-    c:Switch({
-        key = "buffAsk",
-        label = "Demander un buff au clic droit",
-        desc = "Clic droit sur un paladin, un prêtre, un mage… : « Demander un buff » lui chuchote ta demande.",
-        tip = "Exemple : clic droit sur le portrait d'un paladin, « Demander un buff », « Bénédiction des rois » : il "
-            .. "reçoit « Salut, rois stp ? Merci :) » (prêtre : « buff endu », mage : « buff int »…). La liste dépend de sa "
-            .. "classe — paladin : les bénédictions ; prêtre : Robustesse, Esprit divin, Protection contre l'Ombre ; "
-            .. "druide : Marque du fauve, Épines ; mage : Intelligence des arcanes, nourriture, eau ; démoniste : "
-            .. "Respiration interminable, pierre de soins, invocation ; chaman : Respiration aquatique, Marche sur "
-            .. "l'eau. En haut de la liste, « Tous ses buffs » envoie « Salut, buff stp ? Merci :) ». "
-            .. "Marche aussi sur un nom cliqué dans le chat. En instance, si le jeu cache son nom, la demande "
-            .. "part dans le chat du groupe.",
-    })
-    c:Dropdown({
-        key = "buffAskLang",
-        label = "Langue de la demande",
-        indent = 1,
-        enabled = function() return db("buffAsk") end,
-        requires = "Nécessite « Demander un buff au clic droit ».",
-        options = { { value = "fr", text = "Français" }, { value = "en", text = "Anglais" } },
-        tip = "La langue du message envoyé (le menu reste en français). En anglais, avec les abréviations des "
-            .. "joueurs : « Hi, could I get BoK pls? Thanks :) » (Fort, MotW, Int…) ; « Tous ses buffs » : « Hi, "
-            .. "could I get buff pls? Thanks :) ».",
-    })
-    c:Buttons({
-        {
-            text = "Déplacer", width = 120,
-            getText = function() return db("buffLocked") == false and "Verrouiller" or "Déplacer" end,
-            enabled = function() return db("buffAllies") end,
-            requires = "Nécessite « Buffs que mes alliés peuvent me donner ».",
-            tip = "Déverrouille la rangée des buffs à demander pour la glisser où tu veux ; reclique (ou clic droit "
-                .. "dessus) pour la verrouiller.",
-            onClick = function() call("Buffs", "ToggleMove", "rappel de buffs indisponible") end,
-        },
-        {
-            text = "Aperçu", width = 110, primary = true,
-            tip = "Montre la rangée quelques secondes avec deux buffs d'exemple, et écrit dans le chat ce que "
-                .. "Platyplus voit en ce moment (aussi : /pp buffs).",
-            onClick = function()
-                local B = ns.Buffs
-                if not (B and B.Preview) then ns:Print("rappel de buffs indisponible") return end
-                for _, line in ipairs(B:Status()) do ns:Print(line) end
-                B:Preview()
-            end,
-        },
-        {
-            text = "Remettre en place", width = 160,
-            tip = "Replace la rangée au-dessus de ton personnage.",
-            onClick = function()
-                if not call("Buffs", "ResetPosition") then
-                    ns:Reset("buffX")
-                    ns:Reset("buffY")
-                end
-            end,
-        },
-    })
-
-    c = p:Card("Contrôles des mobs", "Ce qu'un mob peut te faire subir, avant de le taper.")
+-- Contrôles des mobs dans l'infobulle (MobControls.lua)
+local function buildMobs(p)
+    local c = p:Card("Contrôles des mobs", "Ce qu'un mob peut te faire subir, avant de le taper.")
     c:Switch({
         key = "mobControlTooltip",
         label = "Dans l'infobulle des mobs",
@@ -1060,95 +977,6 @@ local function buildResources(p)
             .. "repoussent ou désarment, avec leur durée et leur rythme. Les délais viennent du jeu d'origine "
             .. "(base VMaNGOS) : ce sont des ordres de grandeur. Cible un mob et tape /pp mob pour tout voir. "
             .. "En donjon, le jeu cache l'identité des mobs aux addons : rien ne s'affiche.",
-    })
-
-    c = p:Card("Portrait", "Le chiffre exact de ta ressource écrit sur ton portrait.")
-    c:Switch({
-        key = "powerPlayer",
-        label = "Sur mon portrait",
-        tip = "Écrit le montant actuel de ta ressource principale (rage, énergie, mana...) sur ton portrait, "
-            .. "dans la couleur de la ressource.",
-    })
-    c:Switch({
-        key = "powerTarget",
-        label = "Sur le portrait de ma cible",
-        tip = "Même chose pour le portrait de ta cible, quand elle a une barre de ressource.",
-    })
-    c:Dropdown({
-        key = "powerFormat",
-        label = "Format",
-        indent = 1,
-        enabled = whenPortrait,
-        requires = "Nécessite l'affichage sur un portrait.",
-        options = {
-            { value = "cur", text = "Valeur seule (45)" },
-            { value = "curmax", text = "Valeur / maximum (45 / 100)" },
-        },
-        tip = "Montre seulement le montant actuel, ou le montant actuel et le maximum.",
-    })
-    c:Dropdown({
-        key = "powerPos",
-        label = "Position",
-        indent = 1,
-        enabled = whenPortrait,
-        requires = "Nécessite l'affichage sur un portrait.",
-        options = {
-            { value = "TOP", text = "En haut" },
-            { value = "CENTER", text = "Au centre" },
-            { value = "BOTTOM", text = "En bas" },
-        },
-        tip = "Où le texte est posé sur le portrait.",
-    })
-    c:Slider({
-        key = "powerSize",
-        label = "Taille du texte",
-        min = 8, max = 28, step = 1,
-        format = "%d",
-        indent = 1,
-        enabled = whenPortrait,
-        requires = "Nécessite l'affichage sur un portrait.",
-        tip = "Taille de la police du chiffre.",
-    })
-
-    c = p:Card("Barres d'action", "Le coût de chaque sort écrit sur son bouton (30 pour 30 de rage). "
-        .. "Un « + » signale une part facultative. Barres d'action du jeu uniquement.")
-    c:Switch({
-        key = "spellCost",
-        label = "Coût des sorts sur les boutons",
-        tip = "Affiche le coût en rage, énergie, puissance runique, etc. sur les boutons de sorts. "
-            .. "Les addons de barres d'action tiers ne sont pas pris en compte.",
-    })
-    c:Switch({
-        key = "spellCostMana",
-        label = "Afficher aussi les coûts en mana",
-        indent = 1,
-        enabled = whenCost,
-        requires = "Nécessite « Coût des sorts sur les boutons ».",
-        tip = "Par défaut, les coûts en mana sont masqués : ils sont grands et chargent vite les barres.",
-    })
-    c:Dropdown({
-        key = "spellCostPos",
-        label = "Position",
-        indent = 1,
-        enabled = whenCost,
-        requires = "Nécessite « Coût des sorts sur les boutons ».",
-        options = {
-            { value = "TOPLEFT", text = "En haut à gauche" },
-            { value = "BOTTOMLEFT", text = "En bas à gauche" },
-            { value = "TOP", text = "En haut" },
-            { value = "CENTER", text = "Au centre" },
-        },
-        tip = "Où le coût est posé sur l'icône du sort.",
-    })
-    c:Slider({
-        key = "spellCostSize",
-        label = "Taille du texte",
-        min = 8, max = 20, step = 1,
-        format = "%d",
-        indent = 1,
-        enabled = whenCost,
-        requires = "Nécessite « Coût des sorts sur les boutons ».",
-        tip = "Taille de la police du coût sur les boutons.",
     })
 end
 
@@ -1205,8 +1033,8 @@ local function buildProcs(p)
         requires = need,
         tip = "Exemple : un mage dont un sort se met à briller sur sa barre voit son icône apparaître en grand avec la "
             .. "touche. Mage, démoniste, prêtre, druide et chaman passent surtout par là, comme les sorts de rune. "
-            .. "Pour un guerrier, Fulgurance et les autres brillent peut-être aussi (à confirmer en jeu) : coupe cette "
-            .. "option si tu ne veux que la liste de sorts réactifs.",
+            .. "Les sorts réactifs du guerrier peuvent aussi briller : coupe cette option si tu ne veux que la liste "
+            .. "des sorts réactifs.",
     })
     c:Info({
         label = "Pour ta classe",
@@ -1366,7 +1194,7 @@ local function buildPlates(p)
     c:Switch({
         key = "plates",
         label = "Plates Platyplus",
-        desc = "Tank : vert = il te tape, orange = ça se joue, rouge = il tape quelqu'un d'autre.",
+        desc = "Vert : tout va bien, orange : ça se joue, rouge : danger. Les couleurs suivent ton rôle (tank ou DPS).",
         tip = "En combat, la barre de vie de chaque mob prend une couleur selon sa cible :\n"
             .. "|cff33d14dvert|r : il te tape (tank) — ou il t'ignore (DPS/soins) ;\n"
             .. "|cffff9e1aorange|r : ça se joue, quelqu'un est sur le point de prendre ou de perdre l'aggro ;\n"
@@ -2146,8 +1974,8 @@ end
 -- 6. Icône & infos
 ---------------------------------------------------------------------------
 local function buildLauncher(p)
-    local c = p:Card("Icône Platyplus", "Une icône posée où tu veux à l'écran (hors minicarte) : "
-        .. "un clic ouvre cette fenêtre.")
+    local c = p:Card("Icône Platyplus", "Une icône posée où tu veux à l'écran (hors minicarte). Clic gauche : cette "
+        .. "fenêtre. Clic droit : un menu pour allumer ou couper les fonctions. Glisse-la pour la déplacer.")
     c:Switch({
         key = "launcher",
         label = "Afficher l'icône",
@@ -2219,7 +2047,25 @@ end
 ---------------------------------------------------------------------------
 local function buildDungeons(p)
     local D, P = ns.Dungeon, ns.DungeonPlus
-    if D and D.PpStandby then
+    -- surcharge : l'addon DungeonJournal d'Exehn installé à part, avec la liste, « À ton niveau » et le style de
+    -- Platyplus posés dessus (DungeonJournalPlus.lua / DungeonJournalSkin.lua) : les trois réglages agissent
+    local overlay = P and P.Overlay and P.Overlay() or false
+    if overlay then
+        -- (une mise à jour de l'addon a retiré ce sur quoi Platyplus se branche : dit ici, pas par une erreur)
+        local missing = P.Health and P.attached and P.Health() or {}
+        if #missing > 0 then p:Note(P.HealthText(missing), "warn") end
+        if D and D.PpStandby then
+            p:Note("L'addon DungeonJournal séparé est activé : c'est lui qui tourne, avec la liste des donjons, "
+                .. "« À ton niveau » et le style de Platyplus posés dessus. Le journal intégré à Platyplus reste "
+                .. "éteint et garde une copie de ses réglages, de tes favoris et de ta progression : désactive "
+                .. "DungeonJournal dans la liste des addons (écran de choix du personnage) puis relance le jeu pour "
+                .. "revenir au journal intégré.", "info")
+        else
+            p:Note("Le journal des donjons est celui de l'addon DungeonJournal d'Exehn, installé à part. Platyplus "
+                .. "l'ouvre d'ici, depuis le menu de l'icône et avec /pp donjons, et pose dessus sa liste des "
+                .. "donjons, « À ton niveau » et son style, sans rien changer dans l'addon.", "info")
+        end
+    elseif D and D.PpStandby then
         p:Note("L'addon DungeonJournal séparé est activé : c'est lui qui tourne, et la copie de Platyplus reste "
             .. "éteinte. Platyplus garde une copie de ses réglages, de tes favoris et de ta progression : désactive "
             .. "DungeonJournal dans la liste des addons (écran de choix du personnage) puis relance le jeu, et tu "
@@ -2233,7 +2079,7 @@ local function buildDungeons(p)
         })
         return
     end
-    if not D then
+    if not D and not overlay then
         -- version publique : le dossier DungeonJournal n'est pas inclus
         if P and P.Standalone and P.Standalone() then
             p:Note("Le journal des donjons est celui de l'addon DungeonJournal d'Exehn, installé à part : Platyplus "
@@ -2248,19 +2094,24 @@ local function buildDungeons(p)
         else
             p:Note("Le journal des donjons n'est pas inclus dans cette version de Platyplus. Installe l'addon "
                 .. "DungeonJournal d'Exehn depuis CurseForge : Platyplus l'ouvrira ensuite depuis cet onglet, depuis "
-                .. "le menu de l'icône et avec /pp donjons.", "info")
+                .. "le menu de l'icône et avec /pp donjons, et posera dessus sa liste des donjons, « À ton niveau » "
+                .. "et son style.", "info")
         end
         return
     end
-    if not (P and P.Available and P.Available()) then
+    if not overlay and not (P and P.Available and P.Available()) then
         p:Note("Le journal des donjons est introuvable : le dossier Platyplus\\DungeonJournal manque ou n'a pas pu "
             .. "se charger.", "warn")
         return
     end
 
-    local c = p:Card("Journal des donjons", "Chaque donjon : ses boss et leur butin, ses quêtes (où les prendre, "
+    local c = p:Card("Journal des donjons", overlay
+        and ("Chaque donjon : ses boss et leur butin, ses quêtes (où les prendre, les suites de quêtes, les "
+            .. "récompenses), son plan et le chemin jusqu'à l'entrée. Ouvrir : /dj, /pp donjons, le menu de l'icône "
+            .. "Platyplus, ou la touche de l'addon DungeonJournal.")
+        or ("Chaque donjon : ses boss et leur butin, ses quêtes (où les prendre, "
         .. "les suites de quêtes, les récompenses), son plan et le chemin jusqu'à l'entrée. Touche : Raccourcis > "
-        .. "Journal des donjons. Aussi : /dj, /pp donjons, ou le menu de l'icône Platyplus.")
+        .. "Journal des donjons. Aussi : /dj, /pp donjons, ou le menu de l'icône Platyplus."))
     c:Switch({
         key = "dungeonList",
         label = "Liste des donjons à gauche",
@@ -2302,7 +2153,11 @@ local function buildDungeons(p)
         },
     })
 
-    c = p:Card("À propos", ns.Tf("DungeonJournal %s, par Exehn : le journal, ses données (boss, butin, quêtes, plans, routes) et ses images. Platyplus l'intègre tel quel (dev/make_dungeonjournal.py) et y ajoute la liste de gauche, « À ton niveau » et son style. Tes réglages, favoris et progression du journal sont gardés par Platyplus.", tostring(D.PpVersion or "")))
+    if overlay then
+        c = p:Card("À propos", "DungeonJournal, par Exehn : le journal, ses données (boss, butin, quêtes, plans, routes) et ses images viennent de son addon, installé à part ; Platyplus n'en embarque rien. Platyplus y ajoute la liste de gauche, « À ton niveau » et son style en passant derrière lui, sans rien modifier dans l'addon : éteins les trois réglages (puis /reload) et il retrouve son look d'origine.")
+    else
+        c = p:Card("À propos", ns.Tf("DungeonJournal %s, par Exehn : le journal, ses données (boss, butin, quêtes, plans, routes) et ses images. Platyplus l'intègre tel quel (dev/make_dungeonjournal.py) et y ajoute la liste de gauche, « À ton niveau » et son style. Tes réglages, favoris et progression du journal sont gardés par Platyplus.", tostring(D.PpVersion or "")))
+    end
     c:Buttons({
         {
             text = "État du journal", width = 160,
@@ -2428,6 +2283,7 @@ end
 ---------------------------------------------------------------------------
 local COMMANDS = {
     { "/pp", "ouvre ou ferme cette fenêtre (aussi /pp config)" },
+    { "/pp help", "liste toutes les commandes dans le chat" },
     { "/pp loot [on|off]", "loot instantané" },
     { "/pp float [on|off]", "flux à l'écran" },
     { "/pp interact [on|off]", "interaction rapide" },
@@ -2435,13 +2291,12 @@ local COMMANDS = {
     { "/pp gossip [on|off]", "la touche choisit la 1re option de dialogue" },
     { "/pp junk [on|off]", "vente automatique des objets gris" },
     { "/pp etincelles [on|off]", "état des étincelles (ce que Platyplus voit autour de toi) | toutes allumées / coupées" },
-    { "/pp power [on|off]", "ressource sur le portrait" },
-    { "/pp cost [on|off]", "coût des sorts sur les barres d'action" },
     { "/pp preset [restore]", "réglages du jeu recommandés | remet les anciens" },
     { "/pp eat [TOUCHE|off|debug]", "touche pour manger (potion de soins en combat) | changer, couper | diagnostic" },
     { "/pp drink [TOUCHE|off]", "touche pour boire (potion de mana en combat) | changer, couper (aussi /pp boire)" },
     { "/pp donjons [etat|options]", "journal des donjons : l'ouvre | ce qu'il fait | ses propres réglages (aussi /dj)" },
-    { "/pp bienvenue", "réaffiche la présentation de Platyplus" },
+    { "/pp bienvenue", "relance la visite guidée de Platyplus (aussi /pp tuto)" },
+    { "/pp mode [recommande|complet|immersif|minimal]", "mode prêt à l'emploi : voir le mode actuel | en choisir un" },
     { "/pp copier", "ouvre le chat dans une zone de texte à copier (Ctrl+C)" },
     { "/pp chat", "état du chat amélioré (look, mémoire, anti-spam)" },
     { "/pp spam [ajouter|retirer MOT|voir]", "mots masqués par l'anti-spam | messages masqués" },
@@ -2453,7 +2308,7 @@ local COMMANDS = {
     { "/pp menace [on|off|test|reset]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remise en place" },
     { "/pp jets [roll|demo|auto|on|off]", "fenêtre des jets de butin : dés de chaque joueur, objet par objet | onglet /roll | exemple | ouverture auto" },
     { "/pp healer [on|off|cible|auto]", "barre de mana de ton healer : aperçu | l'allume ou l'éteint | suivre ta cible | laisser le groupe choisir" },
-    { "/pp demo", "montre le flux, la barre de ressource et les options d'un coup" },
+    { "/pp demo", "montre le flux, la barre de coups blancs et les options d'un coup" },
     { "/pp perf", "mémoire et temps de calcul de Platyplus mesurés par le jeu" },
     { "/pp key TOUCHE", "change la touche (F, SHIFT-F, BUTTON4...)" },
     { "/pp sell", "vend maintenant (marchand ouvert)" },
@@ -2486,9 +2341,10 @@ local function buildAdvanced(p)
     })
     c:Buttons({
         {
-            text = "Revoir la présentation", width = 220,
-            tip = "Réaffiche la page « Bienvenue dans Platyplus » montrée à la première installation (aussi : /pp bienvenue).",
-            onClick = function() call("UI", "ShowWelcome", "présentation indisponible") end,
+            text = "Revoir la visite guidée", width = 220,
+            tip = "Relance la visite montrée à la première installation : une page par grande fonction, avec ses "
+                .. "réglages principaux (aussi : /pp bienvenue).",
+            onClick = function() if ns.UI and ns.UI.ShowWelcome then ns.UI:ShowWelcome(1) end end,
         },
     })
 
@@ -2551,24 +2407,216 @@ local function buildAdvanced(p)
 end
 
 ---------------------------------------------------------------------------
+-- Modes prêts à l'emploi (Core.lua : ns.MODES, ns:ApplyMode, ns:CurrentMode)
+-- Pages.ModePicker : une tuile par mode sur 2 colonnes, celle du mode actuel surlignée, une ligne d'état dessous.
+-- Un clic applique le mode ; si les réglages sont personnalisés, il faut recliquer dans les 3 s (rien n'est perdu
+-- par erreur). Sert dans l'onglet « Modes » et dans la visite guidée (UIConfig). opts.base / opts.hover : couleur
+-- des tuiles (sur une carte : C.field ; sur le fond de la visite : C.card).
+---------------------------------------------------------------------------
+local TILE_GAP, TILE_PAD, TILE_ICON, TILE_HEAD = 12, 14, 30, 22
+local ARM_TIME = 3
+
+-- hauteur d'un texte à la largeur du FontString (W.Measure lit la hauteur du texte déjà posé)
+local function textHeight(fs, text)
+    fs:SetText(text)
+    return W.Measure(fs, text, fs:GetWidth() or 200)
+end
+
+local function paintTile(t)
+    local C = W.C
+    local active, armed = t.active, t.armed
+    if active then
+        t.bg:SetColor(C.accent, 0.14)
+        t.stroke:SetColor(C.accent, 0.85)
+    else
+        t.bg:SetColor(t.hover and t.colors.hover or t.colors.base)
+        t.stroke:SetColor(armed and C.gold or C.white, armed and 0.7 or (t.hover and 0.16 or 0.07))
+    end
+    t.badge:SetShown(active)
+    W.TextColor(t.name, (active or t.hover) and C.white or C.text)
+    if armed then
+        t.desc:SetText(ns.T("Clique encore pour remplacer tes réglages actuels par ce mode."))
+        W.TextColor(t.desc, C.gold)
+    else
+        t.desc:SetText(ns.T(t.mode.desc))
+        W.TextColor(t.desc, C.dim)
+    end
+    if t.icon.SetDesaturation then t.icon:SetDesaturation((active or t.hover) and 0 or 0.35) end
+end
+
+function Pages.ModePicker(parent, width, opts)
+    opts = opts or {}
+    local C = W.C
+    width = width or W.InnerWidth(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetWidth(width)
+    f.noDivider = true
+    f.topGap = 6
+    local colors = { base = opts.base or C.field, hover = opts.hover or C.fieldHover }
+    local controlled = {}
+    for _, key in ipairs(ns.ModeKeys()) do controlled[key] = true end
+
+    local cols = 2
+    local tileW = floor((width - TILE_GAP * (cols - 1)) / cols)
+    local textX = TILE_PAD + TILE_ICON + 12
+    local textW = tileW - textX - TILE_PAD
+    local armText = ns.T("Clique encore pour remplacer tes réglages actuels par ce mode.")
+    local tileH = 2 * TILE_PAD + TILE_ICON
+    f.tiles = {}
+
+    local function disarm()
+        for _, t in ipairs(f.tiles) do
+            if t.armed then
+                t.armed = nil
+                paintTile(t)
+            end
+        end
+    end
+
+    for i, mode in ipairs(ns.MODES) do
+        local t = CreateFrame("Button", nil, f)
+        t.mode, t.colors = mode, colors
+        t:SetWidth(tileW)
+        t.bg = W.Round(t, "BACKGROUND", 1, 9)
+        t.stroke = W.Stroke(t, "BORDER", 0, 9)
+        t.icon = t:CreateTexture(nil, "ARTWORK")
+        t.icon:SetSize(TILE_ICON, TILE_ICON)
+        t.icon:SetPoint("TOPLEFT", t, "TOPLEFT", TILE_PAD, -TILE_PAD)
+        if mode.icon == "logo" then
+            t.icon:SetTexture(ns.LOGO)
+        else
+            t.icon:SetTexture(mode.icon)
+            t.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+        t.badge = W.Text(t, "GameFontHighlightSmall", C.accent, "OVERLAY", 11)
+        t.badge:SetPoint("TOPRIGHT", t, "TOPRIGHT", -TILE_PAD, -(TILE_PAD + 3))
+        local actif = ns.T("Actif")
+        t.badge:SetText(ns.Win and ns.Win.Upper and ns.Win.Upper(actif) or actif:upper())
+        t.name = W.Text(t, "GameFontHighlight", C.text, "OVERLAY", 15)
+        t.name:SetPoint("TOPLEFT", t, "TOPLEFT", textX, -(TILE_PAD + 1))
+        t.name:SetWidth(textW - 50)
+        t.name:SetJustifyH("LEFT")
+        t.name:SetWordWrap(false)
+        t.name:SetText(ns.T(mode.name))
+        t.desc = W.Text(t, "GameFontHighlightSmall", C.dim, "OVERLAY", 12)
+        t.desc:SetPoint("TOPLEFT", t, "TOPLEFT", textX, -(TILE_PAD + TILE_HEAD))
+        t.desc:SetWidth(textW)
+        t.desc:SetJustifyH("LEFT")
+        t.desc:SetJustifyV("TOP")
+        t.desc:SetSpacing(2)
+        -- hauteur commune : la plus haute des descriptions (et du texte de confirmation), deux lignes au moins
+        local h = max(textHeight(t.desc, armText), textHeight(t.desc, ns.T(mode.desc)), 30)
+        tileH = max(tileH, floor(TILE_PAD + TILE_HEAD + h + TILE_PAD + 4 + 0.5))
+
+        t:SetScript("OnEnter", function(self) self.hover = true paintTile(self) end)
+        t:SetScript("OnLeave", function(self) self.hover = false paintTile(self) end)
+        t:SetScript("OnClick", function(self)
+            if self.active then
+                W.Sound("click")
+                return
+            end
+            -- réglages personnalisés : un 2e clic confirme (ils seraient remplacés)
+            if not ns:CurrentMode() and not self.armed then
+                disarm()
+                self.armed = true
+                paintTile(self)
+                W.Sound("click")
+                local token = {}
+                self.armToken = token
+                if C_Timer and C_Timer.After then
+                    C_Timer.After(ARM_TIME, function()
+                        if self.armToken == token and self.armed then
+                            self.armed = nil
+                            paintTile(self)
+                        end
+                    end)
+                end
+                return
+            end
+            disarm()
+            if ns:ApplyMode(self.mode.id) then W.Sound("on") end
+            f:Refresh()
+        end)
+        W.SetTip(t, mode.name, mode.tip, nil, { side = opts.side })
+        f.tiles[i] = t
+    end
+
+    local rows = math.ceil(#f.tiles / cols)
+    for i, t in ipairs(f.tiles) do
+        local row, col = floor((i - 1) / cols), (i - 1) % cols
+        t:SetHeight(tileH)
+        t:SetPoint("TOPLEFT", f, "TOPLEFT", col * (tileW + TILE_GAP), -row * (tileH + TILE_GAP))
+    end
+    local gridH = rows * tileH + (rows - 1) * TILE_GAP
+
+    -- ligne d'état : hauteur fixe (la plus haute des phrases possibles), pour que rien ne bouge en dessous
+    local status = W.Text(f, "GameFontHighlightSmall", C.dim, "OVERLAY", 12)
+    status:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -(gridH + 12))
+    status:SetWidth(width - 4)
+    status:SetJustifyH("LEFT")
+    status:SetJustifyV("TOP")
+    status:SetSpacing(2)
+    f.status = status
+    local function statusText(current)
+        if current then
+            return ns.Tf("Mode actuel : %s. Tu peux ensuite allumer ou couper chaque fonction comme tu veux.",
+                W.Color("accent", ns.T(current.name)))
+        end
+        local base = ns:GetMode(ns.db and ns.db.mode) or ns.MODES[1]
+        return ns.Tf("Réglages personnalisés, à partir du mode %s. Choisir un mode remet tous ses interrupteurs.",
+            W.Color("accent", ns.T(base.name)))
+    end
+    local statusH = 14
+    for _, mode in ipairs(ns.MODES) do statusH = max(statusH, textHeight(status, statusText(mode))) end
+    statusH = max(statusH, textHeight(status, statusText(nil)))
+    f:SetHeight(floor(gridH + 12 + statusH + 2 + 0.5))
+
+    function f:Refresh(key)
+        if key and key ~= "mode" and not controlled[key] then return end
+        local _, current = ns:CurrentMode()
+        for _, t in ipairs(self.tiles) do
+            t.active = (current ~= nil and t.mode == current)
+            paintTile(t)
+        end
+        status:SetText(statusText(current))
+    end
+    f:SetScript("OnHide", disarm)
+    f:SetScript("OnShow", function(self) self:Refresh() end)
+    -- un réglage change ailleurs (interrupteur de la visite, /pp, menu de l'icône) : l'état suit s'il est affiché
+    ns:OnChange("*", function(key) if f:IsVisible() then f:Refresh(key) end end)
+    f:Refresh()
+    return f
+end
+
+local function buildModes(p)
+    local c = p:Card("Mode de jeu", "Un mode allume ou coupe toutes les fonctions d'un coup : une base, que tu ajustes "
+        .. "ensuite dans les autres onglets. Survole un mode pour voir exactement ce qu'il change.")
+    c:Add(Pages.ModePicker(c, nil, { side = true }))
+    c:Note("Un mode ne change pas ta touche d'interaction, tes listes (« Ne jamais vendre », sorts ajoutés…), les "
+        .. "positions, les tailles, les couleurs ni les réglages du jeu.")
+end
+
+---------------------------------------------------------------------------
 -- API publique
 ---------------------------------------------------------------------------
 -- icon : icône Blizzard classique (présente depuis toujours) ; letter : repli si elle manque
 -- group : titre du groupe dans la barre latérale (les onglets d'un même groupe se suivent)
 Pages.list = {
+    { id = "modes", group = "Jouer", title = "Modes", icon = "Interface\\Icons\\INV_Scroll_03",
+      desc = "Une base de réglages en un clic : Recommandé, Complet, Immersif ou Minimal.", build = buildModes },
     { id = "general", group = "Jouer", title = "La touche", icon = "Interface\\Icons\\INV_Misc_Key_03",
       desc = "Une touche pour interagir, parler et rendre les quêtes ; deux pour manger et boire.", build = buildGeneral },
     { id = "resources", group = "Jouer", title = "Combat", icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
-      desc = "Ta ressource lisible, coups blancs, buffs, la mana de ton healer et la menace des mobs.",
-      build = function(p) buildResources(p) buildThreat(p) end },
+      desc = "Barre de coups blancs, rappel de buffs, fenêtre de menace, mana de ton healer et contrôles des mobs.",
+      build = function(p) buildSwing(p) buildBuffs(p) buildThreat(p) buildHealer(p) buildMobs(p) end },
     { id = "plates", group = "Jouer", title = "Plates", icon = "Interface\\Icons\\Ability_Warrior_DefensiveStance",
-      desc = "Les barres au-dessus des mobs : couleurs de menace, quêtes, rares, et tout leur look.", build = buildPlates },
+      desc = "Les barres de vie au-dessus des mobs : couleurs de menace, quêtes, rares, et tout leur look.", build = buildPlates },
     { id = "procs", group = "Jouer", title = "Procs", icon = "Interface\\Icons\\Ability_MeleeDamage",
-      desc = "Les sorts qui deviennent utilisables : quoi surveiller, et comment l'alerte s'affiche.", build = buildProcs },
+      desc = "L'alerte quand une technique devient utilisable (Fulgurance, Riposte…) : quoi surveiller, comment l'afficher.", build = buildProcs },
     { id = "comfort", group = "Jouer", title = "Confort", icon = "Interface\\Icons\\INV_Misc_Gear_01",
       desc = "Groupes, duels et invocations acceptés ou refusés pour toi ; une interface plus calme.", build = buildComfort },
     { id = "loot", group = "Objets", title = "Butin", icon = "Interface\\Icons\\INV_Misc_Bag_08",
-      desc = "Ramassage instantané, étincelles sur ce qui se ramasse et flux de butin.", build = buildLoot },
+      desc = "Ramassage instantané, étincelles sur ce qui se ramasse, butin affiché à l'écran et jets de dés en groupe.", build = buildLoot },
     { id = "sell", group = "Objets", title = "Vente & HDV", icon = "Interface\\Icons\\INV_Misc_Coin_02",
       desc = "Vends le superflu chez le marchand, le reste à l'hôtel des ventes ; réparation et courrier.",
       build = function(p) buildSell(p) buildMerchant(p) end },

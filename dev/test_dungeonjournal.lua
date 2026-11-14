@@ -140,6 +140,8 @@ M.fireEvent("ADDON_LOADED", "Platyplus")
 check(#M.errors == 0, "ADDON_LOADED sans erreur")
 check(ns.db.dungeonSkin == true and ns.db.dungeonList == true and ns.db.dungeonFit == true, "trois réglages, allumés par défaut")
 check(Skin.active == true and D.PpSkin ~= nil, "style Platyplus allumé")
+check(not ns.DungeonPlus.Overlay() and ns.DungeonPlus.Tunable() and Skin.external == nil and Skin.Ext.main == nil,
+    "journal intégré : par ses points d'accroche, pas par la surcharge de l'addon séparé")
 check((Skin.themes or 0) >= 5, "thèmes des donjons réécrits (" .. tostring(Skin.themes) .. ")")
 local T = ns.THEME
 local th = D.THEMES["Shadowfang Keep"]

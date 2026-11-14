@@ -601,7 +601,19 @@ function M.advance(seconds)
 end
 
 -- événements
+-- Langue de Platyplus des tests : français (les tests vérifient les textes français). Le réglage par défaut de
+-- l'addon est l'anglais ; un test qui veut l'installation neuve met M.testLanguage = nil avant ADDON_LOADED.
+M.testLanguage = "frFR"
+
 function M.fireEvent(event, ...)
+    if event == "ADDON_LOADED" and M.testLanguage then
+        local db = rawget(_G, "PlatyplusDB")
+        if db == nil then
+            db = {}
+            rawset(_G, "PlatyplusDB", db)
+        end
+        if type(db) == "table" and db.language == nil then db.language = M.testLanguage end
+    end
     local list = {}
     for _, f in ipairs(M.allFrames) do
         if st[f].events[event] and st[f].scripts.OnEvent then list[#list + 1] = f end
