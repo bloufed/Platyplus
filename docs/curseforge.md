@@ -32,6 +32,8 @@ The useful features are on from the start, so you can just play. Prefer another 
 
 ## Combat
 
+![Proc alert in game: the ability and its key](https://raw.githubusercontent.com/bloufed/Platyplus/main/docs/images/procs.png)
+
 ![Proc alert, loot feed and swing timer](https://raw.githubusercontent.com/bloufed/Platyplus/main/docs/images/hud.jpg)
 
 * **Proc alerts**: the ability that just became usable pops up with its icon and keybind.
@@ -71,6 +73,8 @@ The useful features are on from the start, so you can just play. Prefer another 
 * A launcher icon with an info bar: FPS, latency, gold, bags, durability, item level, XP per hour.
 * Recommended game settings in one click.
 
+![The launcher icon and its info bar](https://raw.githubusercontent.com/bloufed/Platyplus/main/docs/images/launcher.png)
+
 ## Getting started
 
 Install, restart the game, log in. A short **guided tour** opens, in English: pick your language at the top of its first page and it switches right away. Then one welcome page, then one small page per big feature (the key, combat, threat, loot, selling, windows, the icon), each with its main switches. Replay it any time with **/pp bienvenue** (or **/pp tuto**).
@@ -88,7 +92,7 @@ Then type **/pp** (or left-click the Platyplus icon) for all the options; hover 
 
 * Platyplus is young and under active development. It was built and played on a warrior; other classes are supported but less battle-tested. Please report bugs on [GitHub](https://github.com/bloufed/Platyplus/issues).
 * Platyplus does not bundle a dungeon journal. Install [DungeonJournal](https://www.curseforge.com/wow/addons/dungeonjournal) by Exehn: Platyplus opens it from its menu and dresses it up (Platyplus look, a "Dungeons" column, an "At your level" row). That look and that column are Platyplus's work, not Exehn's: each has its switch in the Dungeons tab of the Platyplus options, so switch them off before reporting a bug to DungeonJournal.
-* Images on this page come from the addon's offline simulator; spell and item icons are placeholders.
+* The options window, the proc alert and the info bar are in-game screenshots; the other images come from the addon's offline simulator (spell and item icons are placeholders).
 
 ## Credits
 

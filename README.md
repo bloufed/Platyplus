@@ -29,8 +29,8 @@ still has its own switch in `/pp`, and a short guided tour on your first login s
 
 ![The options window](docs/images/options-key.jpg)
 
-> The images on this page are rendered by the addon's offline simulator (item and spell icons are placeholders).
-> In-game screenshots are coming.
+> The options window, the proc alert and the info bar are in-game screenshots. The other images are still rendered
+> by the addon's offline simulator (item and spell icons are placeholders); more screenshots are coming.
 
 ## Why Platyplus
 
@@ -80,6 +80,8 @@ still has its own switch in `/pp`, and a short guided tour on your first login s
 - Two more keys to **eat** and **drink**: the best food or drink in your bags out of combat, a potion in combat.
 
 ### Combat
+
+![Proc alert in game: the ability and its key](docs/images/procs.png)
 
 ![Proc alert, loot feed and swing timer](docs/images/hud.jpg)
 
@@ -131,6 +133,8 @@ still has its own switch in `/pp`, and a short guided tour on your first login s
 - A small **launcher icon** with an info bar: FPS, latency, gold, bag space, durability, item level, XP and XP per
   hour — placed wherever you like.
 - Recommended **game settings** in one click.
+
+![The launcher icon and its info bar](docs/images/launcher.png)
 
 ## Commands
 

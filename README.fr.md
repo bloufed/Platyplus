@@ -31,8 +31,9 @@ que fait chaque fonction.
 
 ![La fenêtre d'options](docs/images/options-key.jpg)
 
-> Les images de cette page sont rendues par le simulateur hors jeu de l'addon (les icônes d'objets et de sorts
-> sont des pastilles). Les captures en jeu arrivent.
+> La fenêtre d'options, l'alerte de proc et la barre d'infos sont des captures en jeu. Les autres images sont encore
+> rendues par le simulateur hors jeu de l'addon (les icônes d'objets et de sorts sont des pastilles) ; d'autres
+> captures arrivent.
 
 ## Pourquoi Platyplus
 
@@ -86,6 +87,8 @@ que fait chaque fonction.
 - Deux autres touches pour **manger** et **boire** : le meilleur de tes sacs hors combat, une potion en combat.
 
 ### Combat
+
+![Alerte de proc en jeu : le sort et sa touche](docs/images/procs.png)
 
 ![Alerte de proc, flux de butin et barre de coups blancs](docs/images/hud.jpg)
 
@@ -144,6 +147,8 @@ que fait chaque fonction.
 - Une petite **icône** avec sa barre d'infos : FPS, latence, or, place dans les sacs, durabilité, niveau d'objet,
   XP et XP par heure — où tu veux à l'écran.
 - Les **réglages du jeu** recommandés, en un clic.
+
+![L'icône et sa barre d'infos](docs/images/launcher.png)
 
 ## Commandes
 
