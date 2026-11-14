@@ -1,0 +1,10 @@
+<!-- Platyplus : raccourcis des parties intégrées (Touches > AddOns). Le bloc est GÉNÉRÉ par son script
+     (dev/make_dungeonjournal.py) : ne pas modifier à la main. -->
+<Bindings>
+	<!--@do-not-package@-->
+	<!-- >>> DungeonJournal 2.0.1 (généré par dev/make_dungeonjournal.py : ne pas modifier à la main) -->
+	<Binding name="PLATYPLUSDUNGEON_TOGGLE" category="Journal des donjons">PlatyplusDungeon_Toggle()</Binding>
+	<Binding name="PLATYPLUSDUNGEON_OPENITEM" category="Journal des donjons">PlatyplusDungeon_OpenHoveredItem()</Binding>
+	<!-- <<< DungeonJournal -->
+	<!--@end-do-not-package@-->
+</Bindings>

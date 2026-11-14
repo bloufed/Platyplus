@@ -1,0 +1,6 @@
+# Le dossier est aussi l'addon installé dans le jeu : git ne touche à aucune fin de ligne.
+* -text
+*.tga binary
+*.png binary
+*.jpg binary
+*.ico binary

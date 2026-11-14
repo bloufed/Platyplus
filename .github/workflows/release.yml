@@ -1,0 +1,25 @@
+# Publier une version : pousser un tag « v0.3.0 ».
+# L'archive Platyplus-<tag>-forever.zip est attachée à la release GitHub, puis envoyée sur CurseForge
+# si le secret CF_API_KEY existe et si Platyplus.toc contient « ## X-Curse-Project-ID ». Sans eux : GitHub seul.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: BigWigsMods/packager@v2

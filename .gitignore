@@ -1,0 +1,19 @@
+# DungeonJournal d'Exehn : copie personnelle, sans licence -> jamais dans le dépôt ni dans l'archive
+/DungeonJournal/
+
+# Fichiers générés
+/dev/apercus/
+/dev/ancienne_carte/
+/dev/i18n/manque_*.json
+__pycache__/
+*.pyc
+/.release/
+
+# Traducteur : réglages et journaux de la machine
+/Traducteur/reglages.json
+/Traducteur/diagnostic/
+
+# Système
+Thumbs.db
+desktop.ini
+.DS_Store

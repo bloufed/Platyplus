@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="disc" cx="0.40" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#242833"/>
+      <stop offset="0.6" stop-color="#14171d"/>
+      <stop offset="1" stop-color="#0a0c10"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#6fdcff"/>
+      <stop offset="1" stop-color="#1a73a6"/>
+    </linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8fe3ff"/>
+      <stop offset="1" stop-color="#33ccff"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="18"/></filter>
+    <path id="headPath" d="M 420 468 C 436 392 500 340 600 332 C 740 322 852 404 866 530 C 878 650 790 738 650 732 C 540 728 462 690 430 646"/>
+    <path id="billPath" d="M 420 468 C 320 446 190 440 118 476 C 72 500 72 580 130 606 C 200 636 330 640 430 646"/>
+    <path id="billTop" d="M 118 540 C 200 560 320 556 430 548"/>
+  </defs>
+
+  <circle cx="512" cy="526" r="468" fill="#000" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="512" cy="512" r="470" fill="url(#ring)"/>
+  <circle cx="512" cy="512" r="452" fill="url(#disc)"/>
+  <circle cx="512" cy="512" r="452" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="5"/>
+
+  <g fill="none" stroke="#33ccff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" filter="url(#glow)">
+    <use href="#headPath"/><use href="#billPath"/>
+  </g>
+  <g fill="none" stroke="url(#stroke)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#headPath"/>
+  </g>
+  <g fill="none" stroke="#c9d3e3" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#billPath"/>
+  </g>
+  <use href="#billTop" fill="none" stroke="#c9d3e3" stroke-opacity="0.45" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="540" cy="456" r="24" fill="#8fe3ff"/>
+  <circle cx="540" cy="456" r="24" fill="#33ccff" opacity="0.8" filter="url(#glow)"/>
+
+  <g transform="translate(792 246)" stroke="#c9d3e3" stroke-width="20" stroke-linecap="round">
+    <path d="M -52 0 H 52 M 0 -52 V 52"/>
+  </g>
+</svg>

@@ -1,0 +1,132 @@
+## Interface: 16001
+## Title: |cff33ccffPlaty|r|cffffd133plus|r
+## Notes: All-in-one quality of life: one key to interact, loot, talk and turn in quests; auto-sell, clear resource bar, loot feed and more.
+## Notes-frFR: Le confort tout-en-un : une touche pour interagir, looter, parler et rendre les quêtes ; vente auto, barre de ressource claire, flux de butin et bien plus.
+## Author: Blouf
+## Version: 0.3.0
+## X-License: GPL-3.0-or-later
+## X-Website: https://github.com/bloufed/Platyplus
+## IconTexture: Interface\AddOns\Platyplus\Media\Logo
+## SavedVariables: PlatyplusDB, PlatyplusDungeonDB
+## SavedVariablesPerCharacter: PlatyplusCharDB, PlatyplusDungeonCharacterDB
+## OptionalDeps: ForeverDungeonJournal, Questie
+
+Locale.lua
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\itIT.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Core.lua
+Loot.lua
+Sparkles.lua
+Float.lua
+Interact.lua
+Dialog.lua
+Junk.lua
+Auction.lua
+Prices.lua
+Craft.lua
+Misc.lua
+ChatPlus.lua
+ChatWindow.lua
+Traducteur.lua
+Resources.lua
+ResourceBar.lua
+HealerMana.lua
+Procs.lua
+Buffs.lua
+MobControlsData.lua
+MobControls.lua
+Plates.lua
+Threat.lua
+Gains.lua
+Quests.lua
+GameSettings.lua
+Tweaks.lua
+#@do-not-package@
+# >>> DungeonJournal 2.0.1 (généré par dev/make_dungeonjournal.py : ne pas modifier à la main)
+DungeonJournalGlue.lua
+DungeonJournal\Core\Bootstrap.lua
+DungeonJournal\Localization\Localization.lua
+DungeonJournal\Localization\Locale_frFR.lua
+DungeonJournal\Localization\Locale_esES.lua
+DungeonJournal\Localization\Locale_ruRU.lua
+DungeonJournal\Localization\Locale_itIT.lua
+DungeonJournal\Localization\Locale_ptBR.lua
+DungeonJournal\Localization\Locale_koKR.lua
+DungeonJournal\Localization\Locale_zhCN.lua
+DungeonJournal\Localization\Locale_zhTW.lua
+DungeonJournal\Localization\Content_deDE.lua
+DungeonJournal\Localization\Content_frFR.lua
+DungeonJournal\Localization\Content_esES.lua
+DungeonJournal\Localization\Content_ruRU.lua
+DungeonJournal\Localization\Content_itIT.lua
+DungeonJournal\Localization\Content_ptBR.lua
+DungeonJournal\Localization\Content_koKR.lua
+DungeonJournal\Localization\Content_zhCN.lua
+DungeonJournal\Localization\Content_zhTW.lua
+DungeonJournal\Localization\Content_NewDungeons.lua
+DungeonJournal\Data\Dungeons.lua
+DungeonJournal\Data\SharedLoot.lua
+DungeonJournal\Data\DungeonEntrances.lua
+DungeonJournal\Data\DungeonRoutes.lua
+DungeonJournal\Data\Bosses.lua
+DungeonJournal\Data\QuestMaps.lua
+DungeonJournal\Data\QuestChains.lua
+DungeonJournal\Data\QuestRewards.lua
+DungeonJournal\Data\QuestShareability.lua
+DungeonJournal\Data\QuestUpdates.lua
+DungeonJournal\UI\ThemeData.lua
+DungeonJournal\UI\ItemComparisonData.lua
+DungeonJournal\Systems\MapMarkers.lua
+DungeonJournal\Systems\LootFilter.lua
+DungeonJournal\Systems\Favourites.lua
+DungeonJournal\Data\DungeonAliases.lua
+DungeonJournal\Data\RunLogWings.lua
+DungeonJournal\Systems\RunLog.lua
+DungeonJournal\Systems\RunLogUI.lua
+DungeonJournal\Systems\BugReport.lua
+DungeonJournal\Systems\PortraitPool.lua
+DungeonJournal\Systems\BakedPortraits.lua
+DungeonJournal\Core\Journal.lua
+DungeonJournal\Systems\ScarletWing.lua
+DungeonJournal\Systems\ItemSource.lua
+DungeonJournal\Systems\SettingsPanel.lua
+DungeonJournal\Systems\RPGMode.lua
+DungeonJournal\Systems\ForeverFilter.lua
+DungeonJournal\Systems\BossFactionTag.lua
+DungeonJournal\Systems\MapArtFinder.lua
+DungeonJournal\Systems\WingFromText.lua
+DungeonJournal\Systems\ItemIdLearner.lua
+DungeonJournal\Systems\BossSummon.lua
+DungeonJournal\Systems\MapNote.lua
+DungeonJournal\Systems\TooltipBacking.lua
+DungeonJournal\Systems\DoneTickTooltip.lua
+DungeonJournal\Systems\HomeBottomBand.lua
+DungeonJournal\Systems\LFGButton.lua
+DungeonJournal\Systems\QuestText.lua
+DungeonJournal\Systems\MapBossSize.lua
+DungeonJournal\Systems\WorldMapOverlay.lua
+DungeonJournal\Systems\Resize.lua
+DungeonJournal\Systems\OptionsPanel.lua
+DungeonJournal\Libs\LibDeflate\LibDeflate.lua
+DungeonJournal\Systems\CharacterSnapshot.lua
+DungeonJournal\Systems\CharacterExport.lua
+# <<< DungeonJournal
+#@end-do-not-package@
+QuestPage.lua
+DungeonJournalSkin.lua
+DungeonJournalPlus.lua
+Launcher.lua
+UIWidgets.lua
+QuestCards.lua
+Windows.lua
+QuestWindow.lua
+BagWindow.lua
+CharacterWindow.lua
+CharacterTabs.lua
+LootRolls.lua
+UIPages.lua
+UIConfig.lua

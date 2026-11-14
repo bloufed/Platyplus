@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Piste « face » : tête d'ornithorynque de face, bleu Platyplus + bec or plus large que la tête, « plus » or -->
+  <defs>
+    <linearGradient id="fHead" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6bdcff"/>
+      <stop offset="0.5" stop-color="#33ccff"/>
+      <stop offset="1" stop-color="#1aa2e2"/>
+    </linearGradient>
+    <linearGradient id="fBill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe07a"/>
+      <stop offset="0.5" stop-color="#ffcf3a"/>
+      <stop offset="1" stop-color="#f5a81a"/>
+    </linearGradient>
+    <path id="fHeadShape" d="M 488 262 C 744 262 888 370 888 562 C 888 754 744 862 488 862 C 232 862 88 754 88 562 C 88 370 232 262 488 262 Z"/>
+    <path id="fBillShape" d="M 488 622 C 730 622 830 672 830 772 C 830 872 730 922 488 922 C 246 922 146 872 146 772 C 146 672 246 622 488 622 Z"/>
+    <clipPath id="fBillClip"><use href="#fBillShape"/></clipPath>
+    <clipPath id="fHeadClip"><use href="#fHeadShape"/></clipPath>
+  </defs>
+
+  <use href="#fHeadShape" fill="url(#fHead)"/>
+  <g clip-path="url(#fHeadClip)">
+    <use href="#fBillShape" fill="#0b5f93" opacity="0.40" transform="translate(0 -22)"/>
+  </g>
+
+  <circle cx="312" cy="478" r="44" fill="#0b1622"/>
+  <circle cx="664" cy="478" r="44" fill="#0b1622"/>
+  <circle cx="327" cy="463" r="14" fill="#ffffff"/>
+  <circle cx="679" cy="463" r="14" fill="#ffffff"/>
+
+  <use href="#fBillShape" fill="url(#fBill)"/>
+  <g clip-path="url(#fBillClip)">
+    <path d="M 150 812 Q 488 912 826 812" fill="none" stroke="#c47a00" stroke-opacity="0.5" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <ellipse cx="426" cy="716" rx="24" ry="15" fill="#5a3a06"/>
+  <ellipse cx="550" cy="716" rx="24" ry="15" fill="#5a3a06"/>
+
+  <path d="M 862 92 V 260 M 778 176 H 946" fill="none" stroke="#ffcf3a" stroke-width="58" stroke-linecap="round"/>
+</svg>

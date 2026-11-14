@@ -1,0 +1,220 @@
+# Lexique du traducteur Platyplus
+#
+# Une ligne par terme :   écriture 1 / écriture 2 / ... = ce que ça veut dire
+# Majuscules et minuscules : peu importe. Les lignes qui commencent par # sont ignorées.
+# Un « ! » devant une écriture : seulement si elle est écrite en majuscules
+# (« !IF » = Forgefer, mais pas le mot anglais « if »).
+# Quand un message contient un de ces termes, le traducteur donne le sens à l'IA,
+# qui comprend alors « WC » ou « oom » au lieu de deviner.
+# Si un message tient entièrement dans le lexique (« ty », « brb »), il est traduit
+# tout de suite, sans l'IA. Tu peux ajouter tes propres lignes : elles comptent
+# au prochain lancement du traducteur.
+
+# --- Donjons ---
+RFC / ragefire / ragefire chasm = Gouffre de Ragefeu (donjon)
+WC / wailing caverns / wailing cavern / cavern / caverns = Cavernes des lamentations (donjon)
+DM / deadmines / VC / todesminen / minas de la muerte = Mortemines (donjon) ; « DM » peut aussi être Hache-Tripes (Dire Maul) à haut niveau ; « dm me » = écris-moi en privé
+SFK / shadowfang / shadowfang keep = Donjon d'Ombrecroc (donjon)
+BFD / blackfathom / blackfathom deeps = Profondeurs de Brassenoire (donjon)
+stocks / stockade / stockades = la Prison de Hurlevent (donjon)
+gnomer / gnomeregan = Gnomeregan (donjon)
+RFK / razorfen kraul = Kraal de Tranchebauge (donjon)
+SM / scarlet monastery = Monastère écarlate (donjon)
+GY / graveyard = le Cimetière (aile du Monastère écarlate) ; sinon un cimetière
+lib / library = la Bibliothèque (aile du Monastère écarlate)
+arm / armory / armoury = l'Armurerie (aile du Monastère écarlate)
+cath / cathedral = la Cathédrale (aile du Monastère écarlate)
+RFD / razorfen downs = Souilles de Tranchebauge (donjon)
+ulda / uldaman = Uldaman (donjon)
+ZF / zul'farrak / zulfarrak = Zul'Farrak (donjon)
+mara / maraudon = Maraudon (donjon)
+ST / sunken temple = le Temple englouti (donjon)
+BRD / blackrock depths = Profondeurs de Rochenoire (donjon)
+LBRS = Pic de Rochenoire inférieur (donjon)
+UBRS = Pic de Rochenoire supérieur (donjon)
+DME / DM east = Hache-Tripes Est (donjon)
+DMW / DM west = Hache-Tripes Ouest (donjon)
+DMN / DM north / tribute run = Hache-Tripes Nord (donjon)
+dire maul = Hache-Tripes (donjon)
+strat / stratholme = Stratholme (donjon) ; « UD » = côté mort-vivant, « live » = côté écarlate
+scholo / scholomance = Scholomance (donjon)
+MC / molten core = Cœur du Magma (raid) ; ou contrôle mental du prêtre (« mind control »)
+ony / onyxia = Repaire d'Onyxia (raid)
+BWL / blackwing lair = Repaire de l'Aile noire (raid)
+ZG / zul'gurub = Zul'Gurub (raid)
+AQ20 = Ruines d'Ahn'Qiraj (raid)
+AQ40 = Temple d'Ahn'Qiraj (raid)
+naxx / naxxramas = Naxxramas (raid)
+
+# --- Villes et zones ---
+SW / stormwind = Hurlevent
+!IF / ironforge = Forgefer
+darna / darn / darnassus = Darnassus
+org / orgri / orgrimmar = Orgrimmar
+UC / undercity = Fossoyeuse
+TB / thunder bluff = les Pitons-du-Tonnerre
+XR / crossroads = la Croisée
+BB / booty bay = Baie-du-Butin ; « bb » en minuscules = au revoir
+STV / stranglethorn = Vallée de Strangleronce
+barrens = les Tarides
+EPL = Maleterres de l'Est
+WPL = Maleterres de l'Ouest
+westfall = Marche de l'Ouest
+redridge = les Carmines
+duskwood = Bois de la Pénombre
+wetlands = les Paluns
+hillsbrad = Contreforts de Hautebrande
+arathi = Hautes-terres d'Arathi
+badlands = Terres ingrates
+searing gorge = Gorge des Vents brûlants
+burning steppes = Steppes ardentes
+swamp of sorrows = Marais des Chagrins
+blasted lands = Terres foudroyées
+darkshore = Sombrivage
+ashenvale = Orneval
+stonetalon = Serres-Rocheuses
+thousand needles = Mille pointes
+dustwallow = Marécage d'Âprefange
+felwood = Gangrebois
+winterspring = Berceau-de-l'Hiver
+moonglade = Reflet-de-Lune
+silverpine = Forêt des Pins-Argentés
+tirisfal = Clairières de Tirisfal
+
+# --- Groupe et donjon ---
+LF / LFG = cherche (un groupe)
+LFM = cherche des joueurs pour compléter son groupe
+LF1M / LF2M / LF3M / LF4M = il manque 1 (2, 3, 4) joueur(s) au groupe
+WTS = vend
+WTB = achète
+WTT = échange
+pst / PM me / w me / /w me = écris-moi en chuchotement
+inv / invite = invite (dans le groupe)
+summ / summon / sum = invoquer (« summ me » = invoque-moi : téléporter un joueur jusqu'au groupe)
+port = portail de mage (téléportation vers une ville)
+rez / res = ressusciter ; « res » peut aussi être « réservé »
+ML = le maître du butin (celui qui distribue le butin)
+HR = objet réservé (« hard reserve » : gardé pour quelqu'un, pas jeté aux dés) ; « 1 hr » = 1 heure
+SR = « soft reserve » : chacun réserve un objet avant le donjon
+need or greed / greed = besoin ou cupidité (les dés pour le butin)
+ninja / ninja looter = voleur de butin
+pull = engager le combat (attirer les monstres)
+wipe = tout le groupe meurt
+add / adds = monstres en plus qui rejoignent le combat ; « add me » = ajoute-moi en ami
+pat = patrouille (monstres qui se déplacent)
+aggro = attirer l'attention des monstres
+kite = garder un monstre à distance en reculant
+cc = contrôle (empêcher un monstre d'agir)
+sheep / poly = métamorphose du mage (mouton)
+sap = assommer du voleur
+oom = plus de mana
+inc = ça arrive (des monstres arrivent)
+LoS = casser la ligne de vue
+cd = temps de recharge
+aoe = dégâts de zone
+dps = dégâts (ou joueur qui fait des dégâts)
+heal / healer = soigneur
+tank = tank (celui qui encaisse)
+mt = tank principal
+ot = second tank
+1st = premier
+2nd = deuxième
+3rd = troisième
+boe = lié quand équipé (revendable)
+bop = lié quand ramassé
+AH = hôtel des ventes
+mats = composants d'artisanat
+ench = enchantement
+FP = point de vol (maître de vol)
+HS = pierre de foyer (ou pierre de soins du démoniste)
+SS = pierre d'âme du démoniste
+dc = déconnecté
+lvl / lv = niveau
+xp = expérience
+pug = groupe de joueurs inconnus
+lead = chef de groupe
+GM = maître de guilde (ou maître de jeu)
+pally = paladin
+lock = démoniste
+sham / shammy = chaman
+dudu = druide
+warr = guerrier
+hunt = chasseur
+pet = familier
+stone / meeting stone / summoning stone = pierre de rencontre (devant le donjon, sert à invoquer le groupe)
+cod = contre-remboursement (payé à la réception du courrier)
+slot = emplacement (« 10 slot bag » = sac de 10 places)
+neck = collier
+deviate = déviant (les monstres des Cavernes des lamentations)
+hide / hides = peau / peaux (cuir)
+quest run = run pour faire les quêtes du donjon
+carry = faire passer un joueur plus faible dans le donjon
+spot = place (dans le groupe)
+
+# --- Abréviations de chat ---
+ty / thx / tyvm / tysm = merci
+np / yw = de rien
+gz / grats / gratz / congrats = félicitations
+gg = bien joué
+gl = bonne chance
+hf = amusez-vous bien
+gl hf = bonne chance, amusez-vous bien
+brb = je reviens tout de suite
+bio = pause toilettes
+afk = absent (loin du clavier)
+omw / otw = j'arrive
+gtg / g2g = je dois y aller
+rdy = prêt
+k / kk = ok
+mb = ma faute
+nvm = laisse tomber
+idk = je sais pas
+idc = je m'en fiche
+imo = à mon avis
+tbh = franchement
+ngl = pas de mensonge, franchement
+fr = sérieux / grave (« for real »)
+rn = maintenant
+irl = dans la vraie vie
+ffs = bon sang (agacement)
+wtf = c'est quoi ce délire
+lol / lmao / rofl = mdr
+u = tu / toi
+ur = ton / ta / tu es
+r = es / sont (« are »)
+pls / plz / pl0x = s'il te plaît
+ppl = les gens
+sry / srry = désolé
+ofc = évidemment
+ye / ya / yea / yeah = ouais
+nah = non
+cya = à plus
+gn = bonne nuit
+wb = bon retour
+any1 / anyone / ne1 = quelqu'un
+some1 / someone / sum1 = quelqu'un
+
+# --- Autres langues ---
+mom = un moment (allemand) ; en anglais : maman
+kp = aucune idée (allemand, « kein Plan »)
+grp = groupe
+suche = cherche (allemand)
+xq / pq = pourquoi / parce que (espagnol)
+tmb = aussi (espagnol, « también »)
+
+# --- Pour mes messages ---
+# Ici c'est l'inverse : à gauche des mots français, à droite ce que disent les joueurs.
+# Sert seulement quand TU écris (Ctrl+Entrée).
+invoquer / invoque / invoc / m'invoquer = summon (« summ »)
+pierre / pierre de rencontre = meeting stone (« stone »)
+plus de mana / pu de mana = oom
+j'arrive = omw
+je reviens = brb
+cherche un groupe / cherche groupe / je cherche un groupe = LFG
+il manque = LF1M / LF2M (« il manque 1 / 2 joueurs »)
+soigneur / heal = healer
+inviter / m'inviter / invite-moi = inv
+contre-remboursement = COD
+hôtel des ventes / hdv = AH
+merci = ty
+désolé / dsl = sry
