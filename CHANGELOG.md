@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.1
+
+- **Threat window** redrawn: each row is now the mob's health bar, with a colored stripe for its state, who holds
+  it and your threat percentage in fixed columns, and a summary in the title bar ("5 mobs", "2 lost").
+- **Threat window, on hover**: a tooltip says in plain words where you stand ("You hold it", "You are losing it",
+  "It escaped you"...) and the mob's nameplate is outlined in the world so you can find it. Right-click a row to
+  put or remove the Skull marker.
+- **Threat window, diagnosis**: `/pp menace etat` explains why the window is shown or hidden and lists every mob it
+  sees; `/pp menace` now says why when the window stays hidden. `/pp menace clic` tests whether your game accepts
+  targeting a mob from a button (groundwork for click-to-target).
+- **Fixed**: a row could flash "lost" at the start of a fight for a mob remembered from the previous one.
+- **Fixed**: the eat and drink keys sometimes found nothing right after logging in, reloading or resurrecting.
+- **Fixed**: "en combat :" stayed in French on the Eat and drink card in other languages.
+
 ## 1.0.0
 
 Platyplus reaches 1.0: a guided tour, ready-made modes, and a Platyplus look for the dungeon journal.

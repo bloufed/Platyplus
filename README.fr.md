@@ -195,7 +195,7 @@ python -I dev/apercu.py            # aperçus HTML de chaque fenêtre
 
 Les commentaires et les textes source sont en français ; les traductions sont dans `Locales/`.
 
-Une version se publie en poussant un tag (`v1.0.0`) : une action GitHub fabrique l'archive, l'attache à la release
+Une version se publie en poussant un tag (`v1.0.1`) : une action GitHub fabrique l'archive, l'attache à la release
 et l'envoie sur CurseForge.
 
 ## Crédits et licence

@@ -122,6 +122,26 @@ run("menace", function()
     hideAll()
     ns.Threat:Test() M.advance(0.5)
     ns.Threat:Test() M.advance(0.3)
+    -- statuts et sonde (/pp menace etat | clic) : messages imprimés ou vus seulement à l'usage
+    pcall(ns.Threat.Command, ns.Threat, "etat")
+    pcall(ns.Threat.Command, ns.Threat, "clic")
+    pcall(ns.Threat.Command, ns.Threat, "off")
+    pcall(ns.Threat.Command, ns.Threat, "on")
+    for _, s in ipairs({ "fenêtre de menace : aperçu factice affiché.", "fenêtre de menace : cachée -",
+        "fenêtre de menace : affichée.", "coupée par le garde-fou après des erreurs (/pp menace on la relance)", "réglage éteint (/pp menace on)",
+        "fermée par la croix jusqu'au prochain combat", "« Seulement en groupe » est coché et tu n'es pas en groupe",
+        "« Seulement en combat » est coché et tu n'es pas en combat",
+        "fenêtre de menace : pas affichée -", "rôle retenu :",
+        "lecture des mobs en erreur :", "aucun jeton de mob existant (rien en combat autour de toi).",
+        "sonde de ciblage : hors combat seulement.", "sonde de ciblage : la seule plate attaquable est déjà ta cible : retire ta cible ou approche un autre mob.",
+        "sonde de ciblage : à retirer hors combat.",
+        "sonde de ciblage : aucune plate attaquable à portée ; approche-toi d'un mob et recommence.",
+        "sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.",
+        "sonde de ciblage : clique sur le bouton au centre de l'écran ; le résultat s'affichera ici.",
+        "sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.",
+        "sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.",
+        "sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic.",
+        "fenêtre de menace : le jeu refuse de poser un marqueur depuis la fenêtre (une seule fois signalé)." }) do ns.T(s) end
 end)
 origin("flux")
 run("flux", function()

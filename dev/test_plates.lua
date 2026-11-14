@@ -781,6 +781,37 @@ check(S(p2.bar).shown ~= true and S(p3.bar).shown ~= true, "platesCast coupé : 
 ns:Set("platesCast", true)
 check(#M.errors == 0, "aucune erreur d'exécution (incantations)")
 
+section("mise en évidence d'une plate (fenêtre de menace)")
+local htok, _, hbar = addMob({})
+local htok2, _, hbar2 = addMob({})
+local function litOf(bar)
+    for _, f in ipairs(S(bar).frames or {}) do
+        local r = S(f).regions[1]
+        if r and S(r).vertex and S(r).vertex[2] == 0.95 and S(r).vertex[4] == 0.95 and S(f).shown then return true end
+    end
+    return false
+end
+check(P.Highlight(htok) == true and litOf(hbar), "Highlight(jeton) : liseré clair posé sur la barre de la plate")
+check(not litOf(hbar2), "l'autre plate n'est pas éclairée")
+P.Highlight(htok2)
+check(litOf(hbar2) and not litOf(hbar), "une seule plate éclairée à la fois")
+check(P.Highlight("boss1") == false and not litOf(hbar2), "jeton sans plate : rien (et l'ancienne mise en évidence est retirée)")
+P.Highlight(htok)
+P.Highlight(nil)
+check(not litOf(hbar), "Highlight(nil) : retirée")
+P.Highlight(htok)
+M.fireEvent("NAME_PLATE_UNIT_REMOVED", htok)
+check(not litOf(hbar), "plate qui disparaît : mise en évidence retirée")
+P.Highlight(htok2)
+sim.plates[htok2] = nil
+sim.plates[htok2] = { namePlateUnitToken = "nameplate9", UnitFrame = { unit = "nameplate9", healthBar = hbar2 } }
+sim.mobs.nameplate9 = { canAttack = true, combat = true, class = "normal", threat = { false, nil }, lines = {}, reaction = 2, player = false }
+sim.plates.nameplate9 = sim.plates[htok2]
+M.fireEvent("NAME_PLATE_UNIT_ADDED", "nameplate9")
+check(not litOf(hbar2), "cadre de plate réutilisé pour un autre mob : plus éclairé")
+check(P.Highlight(5) == false and P.Highlight(nil) == false, "argument invalide : sans erreur")
+check(#M.errors == 0, "aucune erreur d'exécution (mise en évidence)")
+
 ---------------------------------------------------------------------------
 section("bilan"); M.report()
 if #M.errors > 0 or #failures > 0 then error(#M.errors .. " erreur(s), " .. #failures .. " échec(s)") end

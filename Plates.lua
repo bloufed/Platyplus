@@ -190,6 +190,61 @@ local function healthBarOf(unit)
     return uf.healthBar or (uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar), uf
 end
 
+-- Mise en évidence d'une plate (survol d'une ligne de la fenêtre de menace) : un liseré clair, texture à nous dans un
+-- cadre à nous sous la barre de vie (comme le liseré d'alerte) ; rien n'est écrit sur les cadres du jeu.
+-- Un seul cadre par barre (réutilisé), une seule plate éclairée à la fois.
+local highlightFrames = setmetatable({}, { __mode = "k" })   -- [barre] = cadre de liseré
+local highlighted                                              -- { unit =, bar =, frame = }
+
+local function clearHighlight()
+    if highlighted then
+        highlighted.frame:Hide()
+        highlighted = nil
+    end
+end
+
+-- Plates.Highlight(unit) éclaire la plate de ce jeton ; Plates.Highlight(nil) retire. Sans plate : rien.
+function Plates.Highlight(unit)
+    clearHighlight()
+    if type(unit) ~= "string" or isSecret(unit) then return false end
+    local bar = healthBarOf(unit)
+    if not bar then return false end
+    local frame = highlightFrames[bar]
+    if not frame then
+        frame = CreateFrame("Frame", nil, bar)
+        frame:SetFrameLevel(math.max(0, (bar:GetFrameLevel() or 1) - 1))
+        frame:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
+        frame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
+        local tex = frame:CreateTexture(nil, "BACKGROUND")
+        tex:SetAllPoints(frame)
+        tex:SetTexture(WHITE)
+        tex:SetVertexColor(1, 0.95, 0.6, 0.95)
+        frame.tex = tex
+        highlightFrames[bar] = frame
+    end
+    -- même rayon arrondi que le liseré d'alerte (masque à nous sur notre texture ; rien sans plate à nous : coins du jeu)
+    local o = byBar[bar]
+    local radius = (o and o.maskFile) or 0
+    if radius > 0 and frame.tex and frame.CreateMaskTexture then
+        if not frame.mask then
+            frame.mask = frame:CreateMaskTexture()
+            frame.mask:SetAllPoints(frame)
+            frame.maskRadius = nil
+        end
+        if frame.maskRadius ~= radius then
+            frame.maskRadius = radius
+            frame.mask:SetTexture(MASK .. radius, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            if not frame.masked then
+                frame.masked = true
+                pcall(frame.tex.AddMaskTexture, frame.tex, frame.mask)
+            end
+        end
+    end
+    frame:Show()
+    highlighted = { unit = unit, bar = bar, frame = frame }
+    return true
+end
+
 local function stopFlash(o)
     o.flashing = false
     o.glow:Hide()
@@ -946,6 +1001,8 @@ end
 ---------------------------------------------------------------------------
 local function setup(unit, retried)
     local bar, uf = healthBarOf(unit)
+    -- cadre de plate réutilisé pour un autre mob : l'ancienne mise en évidence ne le concerne plus
+    if highlighted and highlighted.bar == bar and highlighted.unit ~= unit then clearHighlight() end
     if not bar then
         active[unit] = nil
         -- notre cadre a pu recevoir NAME_PLATE_UNIT_ADDED avant celui du jeu (UnitFrame pas encore posé) : un essai de plus
@@ -979,6 +1036,7 @@ local function setup(unit, retried)
 end
 
 local function release(unit)
+    if highlighted and highlighted.unit == unit then clearHighlight() end
     local o = active[unit]
     active[unit] = nil
     if o and o.unit == unit then

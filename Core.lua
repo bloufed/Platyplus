@@ -5,7 +5,7 @@
 --  * thème partagé (couleurs, médias, sources du flux) : tous les modules visuels s'en servent
 local ADDON, ns = ...
 
-ns.version = "1.0.0"
+ns.version = "1.0.1"
 
 -- Images de l'addon (Media/*.tga, générées par dev/make_media.py)
 ns.MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\"
@@ -569,7 +569,7 @@ local HELP = {
     { "buffs", "rappel de buffs : état (Cri de guerre, buffs de tes alliés) et aperçu" },
     { "mob", "contrôles du mob ciblé (étourdir, ralentir...) et leur rythme" },
     { "plates [on|off|tank|dps|auto]", "plates des mobs : état | allume/éteint | rôle (couleurs de menace)" },
-    { "menace [on|off|test|reset]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remet en place" },
+    { "menace [on|off|test|reset|etat|clic]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remet en place | pourquoi elle est affichée ou non (alias diag) | sonde du ciblage au clic" },
     { "demo", "montre le flux, la barre de coups blancs et les options (pour une capture)" },
     { "cartes", "aperçu des cartes de récompense de quête (objets d'exemple)" },
     { "perf", "mémoire et temps de calcul de Platyplus mesurés par le jeu" },
@@ -744,7 +744,7 @@ commands.plates = function(arg)
 end
 commands.plate = commands.plates
 
--- /pp menace [on|off|test|reset] : fenêtre de menace (tous les mobs en combat, qui les tient)
+-- /pp menace [on|off|test|reset|etat|clic] : fenêtre de menace (tous les mobs en combat, qui les tient)
 commands.threat = function(arg)
     if ns.Threat and ns.Threat.Command then ns.Threat:Command(arg) else ns:Print("fenêtre de menace indisponible") end
 end

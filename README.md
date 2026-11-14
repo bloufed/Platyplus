@@ -181,7 +181,7 @@ python -I dev/apercu.py            # render the HTML previews of every window
 
 Comments and source strings are in French; translations live in `Locales/`.
 
-Releases are cut by pushing a tag (`v1.0.0`): a GitHub Action builds the zip, attaches it to the release and
+Releases are cut by pushing a tag (`v1.0.1`): a GitHub Action builds the zip, attaches it to the release and
 uploads it to CurseForge.
 
 ## Credits and license

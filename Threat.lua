@@ -13,7 +13,11 @@
 -- SetText seulement, couleur = SetVertexColorFromBoolean ; aucun calcul sur un secret. Marqueur de raid secret : pas
 -- d'icône (on ne peut pas savoir s'il y en a un). NON VÉRIFIÉ en jeu.
 -- Pas de clic pour cibler : un bouton sécurisé sur nameplateN/boss/target-de-membre ne peut pas être (re)configuré en
--- combat (SetAttribute interdit), or les lignes changent en plein combat.
+-- combat (SetAttribute interdit), or les lignes changent en plein combat. À la place : survol = infobulle + mise en
+-- évidence de la plate du mob (Plates.Highlight) ; clic droit = marqueur Crâne (SetRaidTarget, en pcall) ; la sonde
+-- `/pp menace clic` teste hors combat si le jeu accepte un bouton sécurisé sur un jeton nameplateN.
+-- Vérifié dans le code de Forever (doc générée) : SetRaidTarget (HasRestrictions, SecretArguments = AllowedWhenUntainted),
+-- GetRaidTargetIndex (retour secret possible). Effet réel du clic droit et de la sonde : NON VÉRIFIÉ en jeu.
 -- Pas d'OnUpdate permanent : événements regroupés (0,2 s) + un petit ticker (0,5 s) seulement fenêtre affichée en combat.
 local ADDON, ns = ...
 
@@ -21,7 +25,7 @@ local Threat = {}
 ns.Threat = Threat
 
 local NAME = "fenêtre de menace"      -- nom affiché par le garde-fou s'il coupe le module
-local WIDTH, ROW_H, GAP = 360, 26, 2
+local WIDTH, ROW_H, GAP = 380, 30, 3
 local MAX_ROWS = 12
 local BAR_TEX = "Interface\\AddOns\\Platyplus\\Media\\Bar"
 local MARKERS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
@@ -30,7 +34,7 @@ local MARKERS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
 local RANK = { loose = 1, bool = 2, warn = 3, none = 4, other = 5, safe = 6 }
 local NONE_COLOR = { 0.55, 0.55, 0.58 }
 
-local frame, rows, header, emptyText, ticker
+local frame, rows, emptyText, ticker
 local inCombat, pending, hiding = false, false, false
 local grace, graceToken = false, 0     -- ~3 s de grâce après le combat ; le jeton annule une grâce devenue caduque
 local testMode = false
@@ -40,6 +44,8 @@ local seqOf = {}                       -- [clé du mob] = ordre d'arrivée
 local nextSeq = 0
 local previous = {}                    -- liste précédente { key=, unit= }
 local guarded, guardedCall, applyLock
+local hovered                          -- ligne survolée (infobulle + plate éclairée)
+local skullRefused = false             -- le jeu a refusé le marqueur : une seule ligne de chat
 
 local function api(name) return rawget(_G, name) end
 local function db(key) return ns.db and ns.db[key] end
@@ -157,19 +163,21 @@ local function hasPlate(unit)
 end
 
 -- hostile, vivant, qui n'est pas un joueur, en combat (un secret sur « en combat » : on garde, le doute profite au mob)
+-- 2e retour : raison du rejet (texte français traduit), nil pour un jeton qui n'existe pas (rien à signaler)
 local function eligible(unit)
     local ok, exists = call(api("UnitExists"), unit)
-    if not (ok and yes(exists)) then return false end
+    if not (ok and yes(exists)) then return false, nil end
     local okA, attack = call(api("UnitCanAttack"), "player", unit)
-    if not (okA and yes(attack)) then return false end
+    if not (okA and yes(attack)) then return false, ns.T("pas attaquable") end
     local okP, player = call(api("UnitIsPlayer"), unit)
-    if okP and yes(player) then return false end
+    if okP and yes(player) then return false, ns.T("joueur") end
     local okD, dead = call(api("UnitIsDead"), unit)
-    if okD and yes(dead) then return false end
+    if okD and yes(dead) then return false, ns.T("mort") end
     local okF, fighting = call(api("UnitAffectingCombat"), unit)
-    if not okF then return false end
+    if not okF then return false, ns.T("état de combat illisible") end
     if isSecret(fighting) then return true end
-    return fighting and true or false
+    if fighting then return true end
+    return false, ns.T("pas en combat")
 end
 
 local function keyOf(unit)
@@ -219,11 +227,14 @@ local function stranger(unit, e)
     return true
 end
 
--- liste triée, filtrée et tronquée ; compte aussi total / perdus
-local function collect()
+-- énumère, filtre et dédoublonne (sans toucher à la mémoire des mobs). report (facultatif) reçoit une entrée par jeton
+-- existant : { unit =, why = raison du rejet ou nil, e = description si gardé } (pour /pp menace etat)
+local function scan(report)
     local kept, seen = {}, {}
     for _, unit in ipairs(candidates()) do
-        if eligible(unit) then
+        local isOk, why = eligible(unit)
+        if report and not isOk and why then report[#report + 1] = { unit = unit, why = why } end
+        if isOk then
             local key = keyOf(unit)
             local dup = false
             if key:sub(1, 2) == "g:" then
@@ -242,16 +253,27 @@ local function collect()
                     end
                 end
             end
-            if not dup then
+            if dup then
+                if report then report[#report + 1] = { unit = unit, why = ns.T("doublon (déjà listé)") } end
+            else
                 local e = describe(unit)
                 e.key = key
-                if not stranger(unit, e) then
+                if stranger(unit, e) then
+                    if report then report[#report + 1] = { unit = unit, why = ns.T("inconnu (pas sur ta liste de menace)"), e = e } end
+                else
                     seen[key] = true
                     kept[#kept + 1] = e
+                    if report then report[#report + 1] = { unit = unit, e = e } end
                 end
             end
         end
     end
+    return kept
+end
+
+-- liste triée, filtrée et tronquée ; compte aussi total / perdus
+local function collect()
+    local kept = scan()
     -- ordre d'arrivée + alerte « perdu »
     local tank = isTank()
     local now = {}
@@ -293,6 +315,124 @@ local function arrange(kept)
 end
 
 ---------------------------------------------------------------------------
+-- Survol, infobulle, marqueur
+---------------------------------------------------------------------------
+local HOLDER_COLOR = { 0.72, 0.74, 0.78, 1 }
+
+-- ce que montre la colonne « qui le tient » : (valeur, à toi ?). valeur = texte, texte secret, ou "-"
+local function holderValue(e)
+    if e.test then return (e.holderMine and ns.T(e.holder or "") or e.holder or ""), e.holderMine == true end
+    if not isSecret(e.tanking) and e.tanking == true then return ns.T("toi"), true end
+    local target = e.unit .. "target"
+    local okE, exists = call(api("UnitExists"), target)
+    if okE and not isSecret(exists) and not exists then return "-", false end
+    if sameUnit(target, "player") == true then return ns.T("toi"), true end     -- cible lisible : c'est toi
+    local ok, who = call(api("UnitName"), target)       -- possiblement secret : SetText / infobulle seulement
+    if ok and (isSecret(who) or who ~= nil) then return who, false end
+    return "-", false
+end
+
+-- l'état en clair selon ton rôle : texte, genre (couleur)
+local function stateText(e)
+    local kind = e.kind
+    if kind == "bool" then return ns.T("Menace cachée par le jeu"), nil end
+    if isTank() then
+        if kind == "safe" then return ns.T("Tu le tiens"), kind end
+        if kind == "warn" then return ns.T("Tu es en train de le perdre"), kind end
+        if kind == "loose" then return ns.T("Il t'a échappé"), kind end
+        if kind == "other" then return ns.T("Tenu par un autre tank"), kind end
+        return ns.T("Il n'est pas sur ta liste de menace"), nil
+    end
+    if kind == "loose" then return ns.T("Il te tape"), kind end
+    if kind == "warn" then return ns.T("Tu vas prendre l'aggro"), kind end
+    return ns.T("Il ne te tape pas"), kind == "safe" and kind or nil
+end
+
+-- l'infobulle du jeu est PARTAGÉE : aucune valeur secrète n'y part (elle y laisserait un aspect secret) ;
+-- une valeur cachée est remplacée par un texte fixe
+local function tipLine(left, right, lr, lg, lb)
+    if isSecret(right) or type(right) ~= "string" then right = ns.T("caché par le jeu") end
+    pcall(GameTooltip.AddDoubleLine, GameTooltip, left, right, lr, lg, lb, 1, 1, 1)
+end
+
+local function showTip(row)
+    local e = row.e
+    if not e or not frame then return end
+    local right, screen = frame:GetRight(), UIParent:GetRight()
+    GameTooltip:SetOwner(row, "ANCHOR_NONE")
+    GameTooltip:ClearAllPoints()
+    if right and screen and right + 300 > screen then
+        GameTooltip:SetPoint("TOPRIGHT", frame, "TOPLEFT", -6, 0)
+    else
+        GameTooltip:SetPoint("TOPLEFT", frame, "TOPRIGHT", 6, 0)
+    end
+    local name = e.name
+    if not e.test then
+        local ok, n = call(api("UnitName"), e.unit)
+        name = ok and n or nil
+    end
+    if isSecret(name) or type(name) ~= "string" then name = ns.T("Mob") end
+    GameTooltip:SetText(name, 1, 1, 1)
+    local frac = e.test and (e.hp or 0) / 100 or healthFraction(e.unit)
+    if frac then GameTooltip:AddLine(ns.Tf("Vie : %d%%", frac * 100 + 0.5), 0.7, 0.72, 0.76) end
+    local who, mine = holderValue(e)
+    tipLine(ns.T("Attaque :"), who, 0.7, 0.72, 0.76)
+    local text, kind = stateText(e)
+    local r, g, b = 0.8, 0.8, 0.84
+    if kind then r, g, b = colorOf(kind) end
+    GameTooltip:AddLine(text, r, g, b, true)
+    local v = e.scaled
+    if isSecret(v) then
+        tipLine(ns.T("Menace :"), nil, 0.7, 0.72, 0.76)      -- « caché par le jeu »
+    elseif e.test and e.pct and e.pct ~= "" then
+        tipLine(ns.T("Menace :"), e.pct, 0.7, 0.72, 0.76)
+    elseif type(v) == "number" then
+        tipLine(ns.T("Menace :"), string.format("%d%%", v + 0.5), 0.7, 0.72, 0.76)
+    end
+    if not e.test then
+        GameTooltip:AddLine(ns.T("Clic droit : poser ou retirer le marqueur Crâne"), 0.55, 0.58, 0.64, true)
+    end
+    GameTooltip:Show()
+end
+
+local function lightPlate(row)
+    local P = ns.Plates
+    if not (P and P.Highlight) then return end
+    local e = row and row.e
+    pcall(P.Highlight, (e and not e.test) and e.unit or nil)
+end
+
+local function clearHover()
+    local old = hovered
+    hovered = nil
+    if old then old.hoverTex:SetAlpha(0) end
+    lightPlate(nil)
+    if GameTooltip and GameTooltip.IsOwned and old and GameTooltip:IsOwned(old) then GameTooltip:Hide() end
+end
+
+local function enterRow(row)
+    hovered = row
+    row.hoverTex:SetAlpha(0.1)
+    lightPlate(row)
+    showTip(row)
+end
+
+-- clic droit : marqueur Crâne (8) posé, ou retiré s'il est déjà là (index lisible). Index secret (instances) : on pose
+-- quand même le Crâne, le retrait n'est pas possible. Appel refusé : un seul message au 1er refus.
+local function toggleSkull(row)
+    local e = row.e
+    if not e or e.test then return end
+    local okG, current = call(api("GetRaidTargetIndex"), e.unit)
+    if not okG then return end
+    local want = (not isSecret(current) and current == 8) and 0 or 8
+    local ok = call(api("SetRaidTarget"), e.unit, want)
+    if not ok and not skullRefused then
+        skullRefused = true
+        ns:Print("fenêtre de menace : le jeu refuse de poser un marqueur depuis la fenêtre (une seule fois signalé).")
+    end
+end
+
+---------------------------------------------------------------------------
 -- Fenêtre
 ---------------------------------------------------------------------------
 local function newRow(i)
@@ -300,51 +440,61 @@ local function newRow(i)
     local row = CreateFrame("Frame", nil, frame)
     row:SetSize(WIDTH - 2 * 12, ROW_H)
     row:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -(ns.Win.HEAD_H + 8 + (i - 1) * (ROW_H + GAP)))
+    row:EnableMouse(true)
 
-    row.back = row:CreateTexture(nil, "BACKGROUND")
-    row.back:SetAllPoints(row)
-    row.back:SetColorTexture(1, 1, 1, 1)
-    row.back:SetAlpha(0.13)
+    -- la vie du mob est le fond de la ligne : une StatusBar sur toute la largeur (piste sombre dessous, remplissage de la
+    -- couleur d'état à faible opacité) ; tous les textes sont des régions de cette barre (au-dessus de son remplissage)
+    local bar = CreateFrame("StatusBar", nil, row)
+    bar:SetAllPoints(row)
+    bar:SetStatusBarTexture(BAR_TEX)
+    bar:SetStatusBarColor(1, 1, 1)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(1)
+    row.bar = bar
 
-    row.stripe = row:CreateTexture(nil, "ARTWORK")
-    row.stripe:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-    row.stripe:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+    row.track = bar:CreateTexture(nil, "BACKGROUND")
+    row.track:SetAllPoints(bar)
+    row.track:SetColorTexture(0, 0, 0, 0.45)
+
+    row.stripe = bar:CreateTexture(nil, "ARTWORK", nil, 2)
+    row.stripe:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+    row.stripe:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
     row.stripe:SetWidth(4)
     row.stripe:SetColorTexture(1, 1, 1, 1)
 
-    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon = bar:CreateTexture(nil, "OVERLAY")
     row.icon:SetSize(16, 16)
-    row.icon:SetPoint("LEFT", row, "LEFT", 9, 0)
+    row.icon:SetPoint("LEFT", bar, "LEFT", 10, 0)
     row.icon:SetTexture(MARKERS)
     row.icon:Hide()
 
-    row.name = W.Text(row, "GameFontHighlight", C.text, "OVERLAY", 12)
-    row.name:SetPoint("LEFT", row, "LEFT", 30, 0)
-    row.name:SetWidth(122)
+    row.name = W.Text(bar, "GameFontHighlight", C.text, "OVERLAY", 12)
+    row.holder = W.Text(bar, "GameFontHighlight", HOLDER_COLOR, "OVERLAY", 11)
+    row.pct = W.Text(bar, "GameFontHighlight", C.text, "OVERLAY", 12, "OUTLINE")
+    -- colonnes de droite de largeur fixe : % (40) puis qui le tient (88) ; le nom prend le reste, sans les recouvrir
+    row.pct:SetPoint("RIGHT", bar, "RIGHT", -8, 0)
+    row.pct:SetWidth(40)
+    row.pct:SetJustifyH("RIGHT")
+    row.holder:SetPoint("RIGHT", row.pct, "LEFT", -6, 0)
+    row.holder:SetWidth(88)
+    row.holder:SetJustifyH("LEFT")
+    if row.holder.SetWordWrap then row.holder:SetWordWrap(false) end
+    row.name:SetPoint("LEFT", bar, "LEFT", 32, 0)
+    row.name:SetPoint("RIGHT", row.holder, "LEFT", -6, 0)
     row.name:SetJustifyH("LEFT")
     if row.name.SetWordWrap then row.name:SetWordWrap(false) end
 
-    row.hp = CreateFrame("StatusBar", nil, row)
-    row.hp:SetSize(42, 7)
-    row.hp:SetPoint("LEFT", row, "LEFT", 158, 0)
-    row.hp:SetStatusBarTexture(BAR_TEX)
-    row.hp:SetStatusBarColor(0.72, 0.74, 0.78)       -- neutre : la couleur d'état est déjà sur le liseré et le fond
-    row.hp:SetMinMaxValues(0, 1)
-    row.hp:SetValue(1)
-    row.hpBack = row.hp:CreateTexture(nil, "BACKGROUND")
-    row.hpBack:SetAllPoints(row.hp)
-    row.hpBack:SetColorTexture(0, 0, 0, 0.55)
+    -- survol : la ligne s'éclaircit
+    row.hoverTex = bar:CreateTexture(nil, "ARTWORK", nil, 1)
+    row.hoverTex:SetAllPoints(bar)
+    row.hoverTex:SetColorTexture(1, 1, 1, 1)
+    row.hoverTex:SetAlpha(0)
 
-    row.holder = W.Text(row, "GameFontHighlight", C.text, "OVERLAY", 12)
-    row.holder:SetPoint("LEFT", row, "LEFT", 206, 0)
-    row.holder:SetWidth(84)
-    row.holder:SetJustifyH("LEFT")
-    if row.holder.SetWordWrap then row.holder:SetWordWrap(false) end
-
-    row.pct = W.Text(row, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
-    row.pct:SetPoint("RIGHT", row, "RIGHT", -6, 0)
-    row.pct:SetWidth(38)
-    row.pct:SetJustifyH("RIGHT")
+    row:SetScript("OnEnter", function(self) enterRow(self) end)
+    row:SetScript("OnLeave", function(self) if hovered == self then clearHover() end end)
+    row:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" then toggleSkull(self) end
+    end)
 
     -- éclat de l'alerte « perdu » : cadre à part (W.Animate prend son OnUpdate)
     row.flash = CreateFrame("Frame", nil, row)
@@ -368,33 +518,14 @@ end
 local function setHolder(row, e)
     local C = ns.W.C
     local fs = row.holder
-    if e.test then
-        fs:SetText(e.holderMine and ns.T(e.holder or "") or e.holder or "")
-        ns.W.TextColor(fs, e.holderMine and C.good or C.text)
-        return
-    end
-    if not isSecret(e.tanking) and e.tanking == true then
-        fs:SetText(ns.T("toi"))
-        ns.W.TextColor(fs, C.good)
-        return
-    end
-    ns.W.TextColor(fs, C.text)
-    local target = e.unit .. "target"
-    local okE, exists = call(api("UnitExists"), target)
-    if okE and not isSecret(exists) and not exists then
-        fs:SetText("-")
-        return
-    end
-    local ok, who = call(api("UnitName"), target)     -- possiblement secret : SetText seulement
-    if ok and (isSecret(who) or who ~= nil) then
-        if not pcall(fs.SetText, fs, who) then fs:SetText("?") end
-    else
-        fs:SetText("-")
-    end
+    local value, mine = holderValue(e)
+    if not pcall(fs.SetText, fs, value) then fs:SetText("?") end
+    ns.W.TextColor(fs, mine and C.good or HOLDER_COLOR)
 end
 
 local function setPercent(row, e)
     local fs = row.pct
+    local C = ns.W.C
     if e.test then fs:SetText(e.pct or "") return end
     local v = e.scaled
     if isSecret(v) then
@@ -428,14 +559,19 @@ end
 
 local function fillRow(row, e)
     local C = ns.W.C
+    row.e = e
+    -- bande pleine, remplissage de vie à faible opacité (même couleur d'état ; menace secrète : FromBoolean)
     paintTexture(row.stripe, e)
-    paintTexture(row.back, e)
-    row.back:SetAlpha(0.13)
+    local fill = row.bar:GetStatusBarTexture()
+    if fill then
+        paintTexture(fill, e)
+        fill:SetAlpha(0.32)
+    end
     setMarker(row, e)
     if e.test then
         row.name:SetText(e.name)
-        row.hp:SetMinMaxValues(0, 100)
-        row.hp:SetValue(e.hp)
+        row.bar:SetMinMaxValues(0, 100)
+        row.bar:SetValue(e.hp)
     else
         local ok, name = call(api("UnitName"), e.unit)
         if ok and (isSecret(name) or name ~= nil) then
@@ -447,31 +583,67 @@ local function fillRow(row, e)
         local okH, hp = call(api("UnitHealth"), e.unit)
         local done = false
         if okM and okH then      -- rien n'est comparé : secrets permis ici, StatusBar seulement
-            done = pcall(row.hp.SetMinMaxValues, row.hp, 0, max) and pcall(row.hp.SetValue, row.hp, hp)
+            done = pcall(row.bar.SetMinMaxValues, row.bar, 0, max) and pcall(row.bar.SetValue, row.bar, hp)
         end
         if not done then
-            row.hp:SetMinMaxValues(0, 1)
-            row.hp:SetValue(0)
+            row.bar:SetMinMaxValues(0, 1)
+            row.bar:SetValue(0)
         end
     end
     ns.W.TextColor(row.name, e.kind == "none" and C.dim or C.text)
+    -- le % prend la couleur d'état (menace secrète : couleur du jeu impossible sur un texte, reste blanc)
+    if e.kind and e.kind ~= "bool" and e.kind ~= "none" then
+        local r, g, b = colorOf(e.kind)
+        row.pct:SetTextColor(r, g, b)
+    else
+        ns.W.TextColor(row.pct, e.kind == "none" and C.dim or C.text)
+    end
     setHolder(row, e)
     setPercent(row, e)
     if e.justLost then flashRow(row) end
 end
 
-local function headerText(total, lost)
-    local tank = isTank()
-    if total == 0 then return ns.T("Aucun mob en combat") end
-    local text = total == 1 and ns.Tf("%d mob", total) or ns.Tf("%d mobs", total)
+-- pastilles du bandeau : « N mobs » (gris) et « N perdus » / « N sur toi » (couleur « loose »)
+local function newPill(parent)
+    local W, C = ns.W, ns.W.C
+    local pill = CreateFrame("Frame", nil, parent)
+    pill:SetHeight(18)
+    pill.shape = W.Round(pill, "BACKGROUND", 0, 8)
+    pill.text = W.Text(pill, "GameFontHighlightSmall", C.dim, "OVERLAY", 11)
+    pill.text:SetPoint("CENTER", pill, "CENTER", 0, 0)
+    pill:Hide()
+    return pill
+end
+
+local function setPill(pill, text, kind)
+    local C = ns.W.C
+    if not text then pill:Hide() return end
+    pill.text:SetText(text)
+    local chars = select(2, text:gsub("[^\128-\191]", ""))
+    pill:SetWidth(chars * 6.3 + 18)
+    if kind then
+        local r, g, b = colorOf(kind)
+        pill.shape:SetColor({ r, g, b }, 0.22)
+        pill.text:SetTextColor(r, g, b)
+    else
+        pill.shape:SetColor(C.white, 0.08)
+        ns.W.TextColor(pill.text, C.dim)
+    end
+    pill:Show()
+end
+
+local function summary(total, lost)
+    if total == 0 then return nil, nil end
+    local count = total == 1 and ns.Tf("%d mob", total) or ns.Tf("%d mobs", total)
+    local lostText
     if lost > 0 then
-        if tank then
-            text = text .. " · " .. (lost == 1 and ns.Tf("%d perdu", lost) or ns.Tf("%d perdus", lost))
+        if isTank() then
+            lostText = lost == 1 and ns.Tf("%d perdu", lost) or ns.Tf("%d perdus", lost)
         else
-            text = text .. " · " .. ns.Tf("%d sur toi", lost)     -- DPS/soins : ceux qui te frappent
+            lostText = ns.Tf("%d sur toi", lost)     -- DPS/soins : ceux qui te frappent
         end
     end
-    return text
+    return count, lostText
 end
 
 local function resize(n)
@@ -492,16 +664,28 @@ local function render(list, total, lost)
                 row:Show()
             else
                 row:Hide()
+                if hovered == row then clearHover() end
                 ns:Debug(NAME, ":", tostring(err))
             end
         else
             row:Hide()
+            row.e = nil
+            if hovered == row then clearHover() end
         end
     end
-    header:SetText(headerText(total, lost))
+    local count, lostText = summary(total, lost)
+    setPill(frame.pillTotal, count, nil)
+    setPill(frame.pillLost, lostText, "loose")
+    frame.pillLost:ClearAllPoints()
+    frame.pillLost:SetPoint("LEFT", frame.pillTotal, "RIGHT", 6, 0)
     emptyText:SetShown(#list == 0)
-    emptyText:SetText(total == 0 and ns.T("Rien ne t'attaque.") or ns.T("Tous tes mobs sont tenus."))
+    emptyText:SetText(total == 0 and ns.T("Aucun mob en combat") or ns.T("Tous tes mobs sont tenus."))
     resize(#list)
+    -- la ligne survolée a changé de mob (tri, arrivée, départ) : infobulle et plate éclairée suivent
+    if hovered and hovered.e then
+        lightPlate(hovered)
+        showTip(hovered)
+    end
 end
 
 local TEST_LIST = {
@@ -509,6 +693,7 @@ local TEST_LIST = {
     { name = "Acolyte fanatique", marker = 7, kind = "warn", hp = 91, holder = "toi", holderMine = true, pct = "78%" },
     { name = "Brute en armure", marker = 1, kind = "safe", hp = 45, holder = "toi", holderMine = true, pct = "100%" },
     { name = "Rôdeur des ombres", kind = "other", hp = 100, holder = "Thorgrim", pct = "34%" },
+    { name = "Seigneur de guerre Kar'thalas le Briseur d'os", kind = "warn", hp = 73, holder = "Sylvara", pct = "64%" },
     { name = "Chiot de meute", kind = "none", hp = 18, holder = "-", pct = "" },
 }
 
@@ -549,12 +734,15 @@ local function build()
             if Threat.Evaluate then Threat.Evaluate() end     -- (la croix ne cache pas elle-même : fondu via evaluate)
         end,
     })
-    header = W.Text(frame.head, nil, C.dim, "OVERLAY", 12)
-    header:SetPoint("RIGHT", frame.head, "RIGHT", -44, 0)
-    header:SetJustifyH("RIGHT")
     frame.title:ClearAllPoints()
     frame.title:SetPoint("LEFT", frame.head, "LEFT", ns.Win.PAD, 0)
     frame.title:SetWidth(70)
+    -- pastilles du résumé, à droite du titre
+    frame.pillTotal = newPill(frame.head)
+    frame.pillTotal:SetPoint("LEFT", frame.head, "LEFT", ns.Win.PAD + 78, 0)
+    frame.pillLost = newPill(frame.head)
+    frame.pillLost:SetPoint("LEFT", frame.pillTotal, "RIGHT", 6, 0)
+    frame:SetScript("OnHide", function() clearHover() end)
     rows = {}
     for i = 1, MAX_ROWS do rows[i] = newRow(i) end
     emptyText = W.Text(frame, nil, C.dim, "OVERLAY", 12)
@@ -575,6 +763,8 @@ end
 -- cache tout de suite, sans fondu, et arrête le ticker (fenêtre coincée à l'écran sinon)
 local function hideNow()
     if not frame then return end
+    clearHover()
+    lastKind, seqOf = {}, {}
     if ticker then ticker:SetScript("OnUpdate", nil) end
     hiding = false
     frame:Hide()
@@ -647,6 +837,7 @@ local function hideWindow(fade)
         hiding = false
         self:Hide()
         self:SetAlpha(1)
+        lastKind, seqOf = {}, {}
         syncTicker()
     end)
 end
@@ -676,6 +867,7 @@ local function handle(event)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat, grace, dismissed = true, false, false
         graceToken = graceToken + 1
+        lastKind, seqOf = {}, {}     -- mémoire du combat précédent : pas de fausse alerte « perdu » sur un mob revu
         evaluate()
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
@@ -698,6 +890,7 @@ local function handle(event)
         inCombat = ok and yes(v)
         evaluate()
     elseif frame and frame:IsShown() and not testMode then
+        if event == "NAME_PLATE_UNIT_REMOVED" and hovered then lightPlate(nil) end   -- (relancée par le rafraîchissement)
         schedule()            -- menace, plates, cibles, marqueurs : regroupés
     end
 end
@@ -729,6 +922,161 @@ function Threat:Test()
     return true
 end
 
+-- pourquoi la fenêtre n'est pas affichée (français : ns:Print le traduit), nil si les règles disent « affichée »
+local function hiddenReason()
+    if isDisabled() then return "coupée par le garde-fou après des erreurs (/pp menace on la relance)" end
+    if testMode then return nil end
+    if not db("threatWindow") then return "réglage éteint (/pp menace on)" end
+    if dismissed then return "fermée par la croix jusqu'au prochain combat" end
+    if not groupOk() then return "« Seulement en groupe » est coché et tu n'es pas en groupe" end
+    if db("threatAuto") and not (inCombat or grace) then return "« Seulement en combat » est coché et tu n'es pas en combat" end
+    return nil
+end
+Threat.HiddenReason = hiddenReason
+
+-- /pp menace etat : pourquoi la fenêtre est là ou non, le rôle retenu, puis une ligne par jeton existant
+function Threat:Status()
+    local why = hiddenReason()
+    if testMode then
+        ns:Print("fenêtre de menace : aperçu factice affiché.")
+    elseif why then
+        ns:Print("fenêtre de menace : cachée -", why)
+    else
+        ns:Print("fenêtre de menace : affichée.")
+    end
+    local P = ns.Plates
+    local tank, reason = false, ""
+    if P and P.IsTank then tank, reason = P:IsTank() end
+    ns:Print("rôle retenu :", tank and ns.T("tank") or ns.T("DPS/soins"), "-", tostring(reason or ""))     -- (reason : déjà traduit par IsTank)
+    local report = {}
+    local ok, err = pcall(scan, report)
+    if not ok then ns:Print("lecture des mobs en erreur :", tostring(err)) return end
+    if #report == 0 then ns:Print("aucun jeton de mob existant (rien en combat autour de toi).") return end
+    for i, r in ipairs(report) do
+        if i > 30 then ns:Print("  ...") break end
+        local e = r.e
+        local detail = ""
+        if e then
+            local status = isSecret(e.status) and "secret" or tostring(e.status)
+            if e.kind == "bool" then status = "secret" end
+            detail = ns.Tf("genre %s, statut %s", tostring(e.kind), status)
+        end
+        if r.why then
+            ns:Print("  " .. r.unit .. " : " .. ns.Tf("écarté (%s)", r.why) .. (detail ~= "" and (" - " .. detail) or ""))
+        else
+            ns:Print("  " .. r.unit .. " : " .. ns.T("listé") .. " - " .. detail)
+        end
+    end
+end
+
+-- Sonde `/pp menace clic` : un bouton sécurisé à nous (type1 = target) sur le premier jeton nameplateN attaquable.
+-- Dit après le clic si le jeu accepte de cibler une plate par un bouton. Création/retrait hors combat seulement.
+-- NON VÉRIFIÉ en jeu : c'est précisément ce que cette sonde sert à savoir.
+local probe, probeClose
+-- 2e retour : une plate attaquable existait mais c'est (peut-être) déjà ta cible (faux positif sinon : le test serait vrai d'avance)
+local function probeUnit()
+    local skipped = false
+    for i = 1, 40 do
+        local unit = "nameplate" .. i
+        local ok, exists = call(api("UnitExists"), unit)
+        if ok and yes(exists) then
+            local okA, attack = call(api("UnitCanAttack"), "player", unit)
+            if okA and yes(attack) then
+                if sameUnit("target", unit) == false then return unit end
+                skipped = true      -- ta cible, ou comparaison impossible (secret) : on saute
+            end
+        end
+    end
+    return nil, skipped
+end
+
+local function probeReport(unit)
+    local ok, same = call(api("UnitIsUnit"), "target", unit)
+    if not ok or isSecret(same) then
+        ns:Print("sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.")
+    elseif same then
+        ns:Print("sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.")
+    else
+        ns:Print("sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic.")
+    end
+end
+
+local function removeProbe()
+    if InCombatLockdown() then ns:Print("sonde de ciblage : à retirer hors combat.") return end
+    if probe then probe:Hide() end
+    if probeClose then probeClose:Hide() end
+end
+
+function Threat:Probe()
+    if InCombatLockdown() then
+        ns:Print("sonde de ciblage : hors combat seulement.")
+        return
+    end
+    if probe and probe:IsShown() then removeProbe() return end
+    local unit, skipped = probeUnit()
+    if not unit then
+        if skipped then
+            ns:Print("sonde de ciblage : la seule plate attaquable est déjà ta cible : retire ta cible ou approche un autre mob.")
+        else
+            ns:Print("sonde de ciblage : aucune plate attaquable à portée ; approche-toi d'un mob et recommence.")
+        end
+        return
+    end
+    if not probe then
+        local ok, button = pcall(CreateFrame, "Button", "PlatyplusThreatProbe", UIParent, "SecureActionButtonTemplate")
+        if not ok or not button then
+            ns:Print("sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.")
+            return
+        end
+        probe = button
+        local W, C = ns.W, ns.W.C
+        probe:SetSize(320, 34)
+        probe:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+        probe:SetFrameStrata("DIALOG")
+        local back = probe:CreateTexture(nil, "BACKGROUND")
+        back:SetAllPoints(probe)
+        back:SetColorTexture(0.1, 0.12, 0.2, 0.95)
+        probe.label = W.Text(probe, "GameFontHighlight", C.text, "OVERLAY", 12)
+        probe.label:SetPoint("CENTER", probe, "CENTER", 0, 0)
+        -- le clic gauche agit au relâchement quelle que soit la CVar ActionButtonUseKeyDown : l'attribut useOnKeyDown = false
+        -- (SecureActionButton_ShouldUseOnKeyDown ne lit la CVar que s'il est nil) + clics enregistrés au relâchement seulement
+        probe:SetAttribute("useOnKeyDown", false)
+        pcall(probe.RegisterForClicks, probe, "AnyUp")
+        probe:HookScript("PostClick", function(self)
+            local target = self.probeUnit
+            if not target then return end
+            local timer = api("C_Timer")
+            if timer and timer.After then timer.After(0.2, function() probeReport(target) end) else probeReport(target) end
+        end)
+        probeClose = CreateFrame("Button", nil, UIParent)
+        probeClose:SetSize(24, 24)
+        probeClose:SetPoint("LEFT", probe, "RIGHT", 6, 0)
+        probeClose:SetFrameStrata("DIALOG")
+        local x = probeClose:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        x:SetPoint("CENTER")
+        x:SetText("x")
+        probeClose:SetScript("OnClick", removeProbe)
+        Threat.probeButton, Threat.probeCross = probe, probeClose     -- (pour les tests)
+    end
+    probe.probeUnit = unit
+    probe:SetAttribute("type1", "target")
+    probe:SetAttribute("unit", unit)
+    local okN, name = call(api("UnitName"), unit)
+    if okN and name ~= nil and not isSecret(name) then
+        probe.label:SetText(ns.Tf("Clique ici : cibler %s", tostring(name)))
+    else
+        probe.label:SetText(ns.T("Clique ici : cibler ce mob"))
+    end
+    probe:Show()
+    probeClose:Show()
+    ns:Print("sonde de ciblage : clique sur le bouton au centre de l'écran ; le résultat s'affichera ici.")
+end
+
+local function sayWhy()
+    local why = hiddenReason()
+    if why then ns:Print("fenêtre de menace : pas affichée -", why) end
+end
+
 function Threat:Command(arg)
     arg = strtrim(arg or ""):lower()
     if arg == "test" then
@@ -737,6 +1085,14 @@ function Threat:Command(arg)
         else
             ns:Print("fenêtre de menace : aperçu retiré.")
         end
+        return
+    end
+    if arg == "etat" or arg == "état" or arg == "diag" or arg == "status" then
+        self:Status()
+        return
+    end
+    if arg == "clic" or arg == "click" then
+        self:Probe()
         return
     end
     if arg == "on" or arg == "off" then
@@ -751,6 +1107,7 @@ function Threat:Command(arg)
     end
     ns:Print("fenêtre de menace :", db("threatWindow") and "allumée" or "éteinte",
         db("threatAuto") and "(seulement en combat)" or "(toujours visible)", "- rôle :", isTank() and "tank" or "DPS/soins")
+    sayWhy()
 end
 
 -- (re)pose le verrou : tirer le bandeau ne déplace que si la fenêtre est déverrouillée

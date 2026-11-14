@@ -167,7 +167,7 @@ local function buildGeneral(p)
                 local ok, res = pcall(ns.Eat.ChoiceText, ns.Eat, roleId)
                 if ok and res then return res end
             end
-            return "|cff999999indisponible|r"
+            return "|cff999999" .. ns.T("indisponible") .. "|r"
         end
     end
     c = p:Card("Manger et boire", "Deux touches qui prennent le meilleur de tes sacs : à manger ou à boire hors combat, "
@@ -2221,7 +2221,9 @@ local function buildThreat(p)
             .. "bleu : un autre tank le tient, gris : il n'a pas de cible. DPS : rouge = il te tape (compteur « N sur toi »).",
         tip = "Liste les mobs en combat (plates, boss, cibles de ton groupe). Les couleurs sont celles des plates "
             .. "(onglet Plates). En donjon, le jeu cache certaines valeurs aux addons : la couleur reste juste, "
-            .. "mais le tri par vie et certains chiffres peuvent manquer. Pas de clic pour cibler : le jeu l'interdit en combat.",
+            .. "mais le tri par vie et certains chiffres peuvent manquer. Survole une ligne : infobulle (état en clair, vie, "
+            .. "menace) et la plate du mob est mise en évidence dans le monde ; clic droit : pose ou retire le marqueur Crâne. "
+            .. "Pas de clic pour cibler : le jeu l'interdit en combat.",
     })
     c:Switch({
         key = "threatAuto", label = "Seulement en combat", indent = 1, enabled = whenThreat,
@@ -2305,7 +2307,7 @@ local COMMANDS = {
     { "/pp buffs", "rappel de buffs : état (Cri de guerre, buffs de tes alliés) et aperçu" },
     { "/pp mob", "contrôles du mob ciblé (étourdir, ralentir...) et leur rythme" },
     { "/pp plates [on|off|tank|dps|auto]", "plates des mobs : état de chaque plate | allume/éteint | rôle pour les couleurs" },
-    { "/pp menace [on|off|test|reset]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remise en place" },
+    { "/pp menace [on|off|test|reset|etat|clic]", "fenêtre de menace : tous les mobs en combat et qui les tient | allume/éteint | mobs factices | remise en place | pourquoi elle est affichée ou non (alias diag) | sonde du ciblage au clic (hors combat)" },
     { "/pp jets [roll|demo|auto|on|off]", "fenêtre des jets de butin : dés de chaque joueur, objet par objet | onglet /roll | exemple | ouverture auto" },
     { "/pp healer [on|off|cible|auto]", "barre de mana de ton healer : aperçu | l'allume ou l'éteint | suivre ta cible | laisser le groupe choisir" },
     { "/pp demo", "montre le flux, la barre de coups blancs et les options d'un coup" },

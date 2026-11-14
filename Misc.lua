@@ -471,7 +471,10 @@ do
     ns.Eat = Eat
 
     local CONSUMABLE = (Enum and Enum.ItemClass and Enum.ItemClass.Consumable) or 0
-    local BAG_EVENTS = { "BAG_UPDATE_DELAYED", "PLAYER_LEVEL_UP" }
+    local BAG_EVENTS = { "BAG_UPDATE_DELAYED", "PLAYER_LEVEL_UP", "GET_ITEM_INFO_RECEIVED", "PLAYER_ALIVE", "PLAYER_UNGHOST",
+                         "PLAYER_DEAD" }
+    local MAX_RETRIES = 5     -- réessais enchaînés quand les données d'objets ne sont pas encore en cache
+    local RETRY_DELAY = 1.5   -- secondes entre deux réessais
 
     local function idSet(list)
         local t = {}
@@ -508,6 +511,11 @@ do
     local listening = false   -- événements de sacs enregistrés
     local warned = {}         -- [rôle] = conflit déjà expliqué
     local lastMissing = {}    -- [rôle] = heure du dernier message « rien à ... »
+    local incomplete = false  -- le dernier scan a croisé un objet dont les données ne sont pas encore en cache
+    local retries = 0         -- réessais déjà faits pour ce manque
+    local retryQueued = false -- un réessai est programmé
+
+    local function tr(text) return ns.T and ns.T(text) or text end
 
     local function keyOf(role)
         local key = ns.db and ns.db[role.key]
@@ -524,12 +532,14 @@ do
         if kind.names then return kind.names end
         local list = {}
         local spell = rawget(_G, "C_Spell")
+        local got = false
         if type(spell) == "table" and spell.GetSpellName then
             local ok, name = pcall(spell.GetSpellName, kind.spell)
-            if ok and type(name) == "string" and name ~= "" then list[1] = name end
+            if ok and type(name) == "string" and name ~= "" then list[1] = name; got = true end
         end
         for _, name in ipairs(kind.fallback) do list[#list + 1] = name end
-        kind.names = list
+        -- Nom du sort pas encore connu (début de session) : liste figée seulement une fois le nom obtenu.
+        if got then kind.names = list else incomplete = true end
         return list
     end
 
@@ -560,6 +570,14 @@ do
         if not ok or classID ~= CONSUMABLE then return nil end
         local okSpell, spellName, spellID = pcall(items.GetItemSpell, id)
         if not okSpell then return nil end
+        -- Sort pas encore en cache (connexion, /reload) : un consommable sans sort n'est peut-être pas « sans sort »,
+        -- il n'est juste pas chargé. On demande son chargement et on réessaiera (borné).
+        if type(spellName) ~= "string" or spellName == "" then
+            incomplete = true
+            local request = items.RequestLoadItemDataByID
+            if request then pcall(request, id) end
+            return nil
+        end
         local kinds
         for _, k in ipairs(KIND_ORDER) do
             if matches(KINDS[k], spellName, spellID) then
@@ -572,6 +590,11 @@ do
         if not okUse or not usable then return nil end
         local okInfo, name, link, _, ilvl, minLevel = pcall(items.GetItemInfo, id)
         if not okInfo then name, link, ilvl, minLevel = nil, nil, nil, nil end
+        if not name then    -- niveau requis inconnu : le classement serait faux, on réessaiera
+            incomplete = true
+            local request = items.RequestLoadItemDataByID
+            if request then pcall(request, id) end
+        end
         local okCount, count = pcall(items.GetItemCount, id)
         return {
             id = id, name = name, link = link, icon = icon,
@@ -583,6 +606,7 @@ do
     -- parcourt les sacs (une fois par objet différent) et retient le meilleur de chaque sorte
     local function scan()
         dirty = not listening    -- sans événements de sacs, on rescanne à chaque demande
+        incomplete = false
         for k in pairs(KINDS) do best[k] = nil end
         local items, bags = rawget(_G, "C_Item"), rawget(_G, "C_Container")
         if type(items) ~= "table" or type(bags) ~= "table" then return end
@@ -624,13 +648,39 @@ do
         end
     end
 
-    local function refresh()
+    -- mort ou fantôme : les objets peuvent paraître « inutilisables » ; on ne choisit rien, on attend la résurrection
+    local function isDead()
+        local f = rawget(_G, "UnitIsDeadOrGhost")
+        if type(f) ~= "function" then return false end
+        local ok, dead = pcall(f, "player")
+        return ok and dead == true
+    end
+
+    local refresh
+
+    -- réessai borné (pas d'OnUpdate) : les données d'objets arrivent après la connexion
+    local function scheduleRetry()
+        if retryQueued or retries >= MAX_RETRIES or not (C_Timer and C_Timer.After) then return end
+        retryQueued = true
+        retries = retries + 1
+        C_Timer.After(RETRY_DELAY, function()
+            retryQueued = false
+            if incomplete and anyKey() then refresh() end
+        end)
+    end
+
+    function refresh()
         if InCombatLockdown() then
             dirty, pending = true, true
             return
         end
+        if isDead() then
+            dirty = true    -- refait à PLAYER_ALIVE / PLAYER_UNGHOST
+            return
+        end
         scan()
         applyMacros()
+        if incomplete then scheduleRetry() else retries = 0 end
     end
 
     local function createButtons()
@@ -644,7 +694,8 @@ do
                 -- juste avant d'agir : choix frais si les sacs ont bougé (hors combat), message s'il n'y a rien
                 b:SetScript("PreClick", function()
                     local fight = InCombatLockdown()
-                    if dirty and not fight then refresh() end
+                    -- aussi quand rien n'est trouvé : un choix vide vient peut-être d'un scan fait trop tôt
+                    if (dirty or not best[role.rest]) and not fight then refresh() end
                     local kind = fight and role.combat or role.rest
                     if not best[kind] then
                         local now = GetTime()
@@ -728,8 +779,9 @@ do
     function Eat:ChoiceText(roleId)
         local role = ROLE[roleId or "eat"]
         local rest, combat = self:BestOf(role.rest), self:BestOf(role.combat)
-        local none = "|cff999999aucune|r"
-        return (rest and shortText(rest) or none) .. "  |cff888888·  en combat :|r  " .. (combat and shortText(combat) or none)
+        local none = "|cff999999" .. tr("aucune") .. "|r"
+        return tr("%s  |cff888888·  en combat :|r  %s"):format(rest and shortText(rest) or none,
+            combat and shortText(combat) or none)
     end
 
     function Eat:Describe(roleId)
@@ -828,9 +880,21 @@ do
             if dirty then refresh() end
             return
         end
+        if event == "GET_ITEM_INFO_RECEIVED" then
+            -- très fréquent (infobulles, HDV...) : on ne réagit que si un scan attendait des données
+            if incomplete and anyKey() then scheduleRetry() end
+            return
+        end
+        if event == "PLAYER_DEAD" then
+            dirty = true    -- rien à choisir tant qu'on est mort ; PLAYER_ALIVE / PLAYER_UNGHOST s'en chargent
+            return
+        end
         if event == "PLAYER_ENTERING_WORLD" then
             createButtons()
             Eat:ApplyBinding()
+        end
+        if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+            retries = 0
         end
         dirty = true
         if anyKey() then refresh() end

@@ -43,6 +43,8 @@ local ITEMS = {
     [2862] = { "Pierre à aiguiser grossière", 0, 0, "Aiguisage", 2828, 1, 5, true },
     [2589] = { "Étoffe de lin", 7, 5, nil, nil, 1, 5, true },
 }
+local cold, dead = false, false      -- données d'objets pas encore en cache / joueur mort ou fantôme
+def("UnitIsDeadOrGhost", function() return dead end)
 local bags
 local function setBags(b) bags = b end
 local function countOf(id)
@@ -64,12 +66,13 @@ def("C_Item", {
         local d = ITEMS[id]; if not d then return nil end
         return id, "Consommable", "x", "", 1000 + id, d[2], d[3]
     end,
+    RequestLoadItemDataByID = function() end,
     GetItemInfo = function(id)
-        local d = ITEMS[id]; if not d then return nil end
+        local d = ITEMS[id]; if not d or cold then return nil end
         return d[1], "|cffffffff|Hitem:" .. id .. "|h[" .. d[1] .. "]|h|r", 1, d[7], d[6]
     end,
-    GetItemSpell = function(id) local d = ITEMS[id]; if d and d[4] then return d[4], d[5] end end,
-    IsUsableItem = function(id) local d = ITEMS[id]; return d and d[8] or false, false end,
+    GetItemSpell = function(id) local d = ITEMS[id]; if d and d[4] and not cold then return d[4], d[5] end end,
+    IsUsableItem = function(id) local d = ITEMS[id]; return (d and d[8] and not dead) or false, false end,
     GetItemCount = function(id) return countOf(id) end,
 })
 local SPELL_NAMES = { [433] = "Nourriture", [430] = "Boisson", [441] = "Potion de soins", [437] = "Rappel de mana" }
@@ -226,6 +229,56 @@ check(printedHas("la touche J (manger) fait : CLICK PlatyplusEatButton:LeftButto
     "ce que fait vraiment la touche, et sa macro (ragoût : même niveau que le jambon, moins de réserve)")
 
 ---------------------------------------------------------------------------
+section("connexion : données d'objets pas encore en cache, puis reçues")
+setBags({ [0] = { [1] = { 4540, 20 }, [2] = { 118, 2 } } })
+cold = true
+M.fireEvent("PLAYER_ENTERING_WORLD")       -- le choix est fait alors que le jeu ne connaît pas encore les objets
+check(eatBtn:GetAttribute("macrotext") == nil, "cache froid : rien trouvé pour l'instant")
+cold = false                                -- les données arrivent
+M.fireEvent("GET_ITEM_INFO_RECEIVED", 4540, true)
+M.advance(2)
+check(eatBtn:GetAttribute("macrotext") == "/use [combat] item:118; item:4540", "données reçues : le choix est refait (" .. tostring(eatBtn:GetAttribute("macrotext")) .. ")")
+-- sans événement du tout : le réessai programmé suffit, et il est borné
+cold = true
+setBags({ [0] = { [1] = { 4599, 4 } } })
+M.fireEvent("BAG_UPDATE_DELAYED")
+check(eatBtn:GetAttribute("macrotext") == nil, "cache froid (2) : rien")
+cold = false
+M.advance(2)
+check(eatBtn:GetAttribute("macrotext") == "/use [nocombat] item:4599", "réessai programmé : trouvé sans autre événement")
+cold = true
+local timersBefore = #M.timers
+M.fireEvent("BAG_UPDATE_DELAYED")
+for _ = 1, 20 do M.advance(2); M.fireEvent("GET_ITEM_INFO_RECEIVED", 4599, false) end
+check(#M.timers - timersBefore <= 8, "réessais bornés (" .. (#M.timers - timersBefore) .. " minuteurs)")
+cold = false
+M.fireEvent("BAG_UPDATE_DELAYED")
+-- appui sur la touche avec un choix vide venu d'un scan trop précoce
+setBags({ [0] = { [1] = { 4540, 20 } } })
+check(eatBtn:GetAttribute("macrotext") ~= nil, "sacs relus après le changement")
+
+section("mort puis résurrection")
+setBags({ [0] = { [1] = { 4540, 20 }, [2] = { 118, 2 } } })
+M.fireEvent("BAG_UPDATE_DELAYED")
+check(eatBtn:GetAttribute("macrotext") == "/use [combat] item:118; item:4540", "vivant : macro en place")
+dead = true
+M.fireEvent("PLAYER_DEAD")
+M.fireEvent("BAG_UPDATE_DELAYED")           -- changement de sacs pendant la mort : les objets paraissent inutilisables
+M.fireEvent("PLAYER_ALIVE")                 -- libération en fantôme : toujours mort
+check(eatBtn:GetAttribute("macrotext") == "/use [combat] item:118; item:4540", "mort / fantôme : le choix n'est pas vidé")
+M.fire(eatBtn, "PreClick", "LeftButton", true)
+check(eatBtn:GetAttribute("macrotext") ~= nil, "appui en fantôme : la macro reste")
+dead = false
+M.fireEvent("PLAYER_UNGHOST")
+check(eatBtn:GetAttribute("macrotext") == "/use [combat] item:118; item:4540", "résurrection : macro correcte")
+-- cas pire : le choix a été vidé pendant la mort (scan trop précoce), la résurrection doit le refaire
+dead = true
+M.fireEvent("PLAYER_DEAD")
+dead = false
+setBags({ [0] = { [1] = { 4540, 20 } } })
+M.fireEvent("PLAYER_ALIVE")
+check(eatBtn:GetAttribute("macrotext") == "/use [nocombat] item:4540", "PLAYER_ALIVE : choix recalculé")
+
 section("client sans noms de sorts")
 -- 2e chargement (comme un /reload) sur un client où C_Spell.GetSpellName ne répond pas : replis et identifiants
 def("C_Spell", { GetSpellName = function() return nil end })
