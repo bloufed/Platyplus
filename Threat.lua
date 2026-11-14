@@ -980,9 +980,49 @@ local function probeReport(unit)
     end
 end
 
+-- bouton témoin : même modèle, mais unit = "player" (jeton toujours accepté). S'il te cible toi-même, le bouton sécurisé
+-- marche et c'est bien le jeton nameplateN que le jeu refuse ; sinon c'est la sonde elle-même qui est en cause.
+local probeSelf
+local function probeSelfReport()
+    local ok, same = call(api("UnitIsUnit"), "target", "player")
+    if ok and not isSecret(same) and same then
+        ns:Print("sonde de ciblage, témoin : le bouton fonctionne (tu t'es ciblé toi-même). Si l'autre bouton ne cible pas le mob, ton jeu refuse les plates.")
+    else
+        ns:Print("sonde de ciblage, témoin : même te cibler toi-même ne marche pas : le bouton de test est en cause, pas les plates.")
+    end
+end
+
+-- un bouton de sonde : sécurisé, clic gauche = cibler `unit` ; `report` est appelé 0,2 s après le clic (au relâchement)
+local function probeButton(name, y, report)
+    local ok, button = pcall(CreateFrame, "Button", name, UIParent, "SecureActionButtonTemplate")
+    if not ok or not button then return nil end
+    local W, C = ns.W, ns.W.C
+    button:SetSize(340, 34)
+    button:SetPoint("CENTER", UIParent, "CENTER", 0, y)
+    button:SetFrameStrata("DIALOG")
+    local back = button:CreateTexture(nil, "BACKGROUND")
+    back:SetAllPoints(button)
+    back:SetColorTexture(0.1, 0.12, 0.2, 0.95)
+    button.label = W.Text(button, "GameFontHighlight", C.text, "OVERLAY", 12)
+    button.label:SetPoint("CENTER", button, "CENTER", 0, 0)
+    -- le clic gauche agit au relâchement quelle que soit la CVar ActionButtonUseKeyDown : l'attribut useOnKeyDown = false
+    -- (SecureActionButton_ShouldUseOnKeyDown ne lit la CVar que s'il est nil) ; appui ET relâchement enregistrés pour
+    -- que le clic arrive dans tous les cas
+    button:SetAttribute("useOnKeyDown", false)
+    button:SetAttribute("type1", "target")
+    pcall(button.RegisterForClicks, button, "AnyDown", "AnyUp")
+    button:SetScript("PostClick", function(self, _, down)
+        if down == true then return end
+        local timer = api("C_Timer")
+        if timer and timer.After then timer.After(0.2, function() report(self) end) else report(self) end
+    end)
+    return button
+end
+
 local function removeProbe()
     if InCombatLockdown() then ns:Print("sonde de ciblage : à retirer hors combat.") return end
     if probe then probe:Hide() end
+    if probeSelf then probeSelf:Hide() end
     if probeClose then probeClose:Hide() end
 end
 
@@ -1002,31 +1042,19 @@ function Threat:Probe()
         return
     end
     if not probe then
-        local ok, button = pcall(CreateFrame, "Button", "PlatyplusThreatProbe", UIParent, "SecureActionButtonTemplate")
-        if not ok or not button then
+        local button = probeButton("PlatyplusThreatProbe", 120, function(self)
+            if self.probeUnit then probeReport(self.probeUnit) end
+        end)
+        if not button then
             ns:Print("sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.")
             return
         end
         probe = button
-        local W, C = ns.W, ns.W.C
-        probe:SetSize(320, 34)
-        probe:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
-        probe:SetFrameStrata("DIALOG")
-        local back = probe:CreateTexture(nil, "BACKGROUND")
-        back:SetAllPoints(probe)
-        back:SetColorTexture(0.1, 0.12, 0.2, 0.95)
-        probe.label = W.Text(probe, "GameFontHighlight", C.text, "OVERLAY", 12)
-        probe.label:SetPoint("CENTER", probe, "CENTER", 0, 0)
-        -- le clic gauche agit au relâchement quelle que soit la CVar ActionButtonUseKeyDown : l'attribut useOnKeyDown = false
-        -- (SecureActionButton_ShouldUseOnKeyDown ne lit la CVar que s'il est nil) + clics enregistrés au relâchement seulement
-        probe:SetAttribute("useOnKeyDown", false)
-        pcall(probe.RegisterForClicks, probe, "AnyUp")
-        probe:HookScript("PostClick", function(self)
-            local target = self.probeUnit
-            if not target then return end
-            local timer = api("C_Timer")
-            if timer and timer.After then timer.After(0.2, function() probeReport(target) end) else probeReport(target) end
-        end)
+        probeSelf = probeButton("PlatyplusThreatProbeSelf", 80, probeSelfReport)
+        if probeSelf then
+            probeSelf:SetAttribute("unit", "player")
+            probeSelf.label:SetText(ns.T("Témoin : clique ici pour te cibler toi-même"))
+        end
         probeClose = CreateFrame("Button", nil, UIParent)
         probeClose:SetSize(24, 24)
         probeClose:SetPoint("LEFT", probe, "RIGHT", 6, 0)
@@ -1038,7 +1066,6 @@ function Threat:Probe()
         Threat.probeButton, Threat.probeCross = probe, probeClose     -- (pour les tests)
     end
     probe.probeUnit = unit
-    probe:SetAttribute("type1", "target")
     probe:SetAttribute("unit", unit)
     local okN, name = call(api("UnitName"), unit)
     if okN and name ~= nil and not isSecret(name) then
@@ -1047,8 +1074,9 @@ function Threat:Probe()
         probe.label:SetText(ns.T("Clique ici : cibler ce mob"))
     end
     probe:Show()
+    if probeSelf then probeSelf:Show() end
     probeClose:Show()
-    ns:Print("sonde de ciblage : clique sur le bouton au centre de l'écran ; le résultat s'affichera ici.")
+    ns:Print("sonde de ciblage : clique d'abord le bouton du mob, puis le bouton témoin ; les résultats s'affichent ici.")
 end
 
 local function sayWhy()

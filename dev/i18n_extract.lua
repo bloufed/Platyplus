@@ -137,7 +137,10 @@ run("menace", function()
         "sonde de ciblage : à retirer hors combat.",
         "sonde de ciblage : aucune plate attaquable à portée ; approche-toi d'un mob et recommence.",
         "sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.",
-        "sonde de ciblage : clique sur le bouton au centre de l'écran ; le résultat s'affichera ici.",
+        "sonde de ciblage : clique d'abord le bouton du mob, puis le bouton témoin ; les résultats s'affichent ici.",
+        "Témoin : clique ici pour te cibler toi-même",
+        "sonde de ciblage, témoin : le bouton fonctionne (tu t'es ciblé toi-même). Si l'autre bouton ne cible pas le mob, ton jeu refuse les plates.",
+        "sonde de ciblage, témoin : même te cibler toi-même ne marche pas : le bouton de test est en cause, pas les plates.",
         "sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.",
         "sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.",
         "sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic." }) do ns.T(s) end

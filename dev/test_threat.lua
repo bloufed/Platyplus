@@ -593,6 +593,20 @@ n1 = #M.printed
 M.fire(pb, "PostClick"); M.advance(0.5)
 check(has(printedSince(n1), "illisible"), "comparaison secrète : « illisible »")
 sim.blindIsUnit = false
+-- bouton témoin : unit = "player" ; dit si le bouton sécurisé lui-même fonctionne
+local witness = rawget(_G, "PlatyplusThreatProbeSelf")
+check(witness ~= nil and S(witness).shown and S(witness).attrs.unit == "player" and S(witness).attrs.type1 == "target",
+    "bouton témoin créé : type1 = target, unit = player")
+n1 = #M.printed
+M.fire(witness, "PostClick", "LeftButton", true); M.advance(0.5)
+check(not has(printedSince(n1), "témoin"), "témoin : rien à l'appui du bouton (seul le relâchement compte)")
+M.fire(witness, "PostClick", "LeftButton", false); M.advance(0.5)
+check(has(printedSince(n1), "même te cibler toi-même ne marche pas"), "témoin sans effet : la sonde se dit en cause")
+sim.units.target = sim.units.player
+n1 = #M.printed
+M.fire(witness, "PostClick", "LeftButton", false); M.advance(0.5)
+check(sim.units.player == nil or has(printedSince(n1), "le bouton fonctionne"), "témoin qui cible le joueur : « le bouton fonctionne »")
+sim.units.target = sim.units.nameplate3
 M.inCombat = true
 n1 = #M.printed
 M.fire(T.probeCross, "OnClick")
