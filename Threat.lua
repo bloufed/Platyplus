@@ -12,13 +12,11 @@
 -- (identité) ; UnitIsUnit aussi (comparaison). Ici : vie = StatusBar:SetMinMaxValues/SetValue seulement, nom, %, cible =
 -- SetText seulement, couleur = SetVertexColorFromBoolean ; aucun calcul sur un secret. Marqueur de raid secret : pas
 -- d'icône (on ne peut pas savoir s'il y en a un). NON VÉRIFIÉ en jeu.
--- Pas de clic pour cibler : un bouton sécurisé sur nameplateN/boss/target-de-membre ne peut pas être (re)configuré en
--- combat (SetAttribute interdit), or les lignes changent en plein combat. À la place : survol = infobulle + mise en
--- évidence de la plate du mob (Plates.Highlight) ; la sonde `/pp menace clic` teste hors combat si le jeu accepte un
--- bouton sécurisé sur un jeton nameplateN.
--- VÉRIFIÉ EN JEU (2026-11-15) : SetRaidTarget appelé par l'addon est une action PROTÉGÉE (« Platyplus a été bloqué à
--- cause d'une action qui n'est utilisable que par l'IU de Blizzard ») ; pcall ne rattrape pas ce blocage. Ne jamais
--- l'appeler d'ici : un marqueur ne peut venir que d'un bouton sécurisé (type "raidtarget"). Effet de la sonde : NON VÉRIFIÉ.
+-- VÉRIFIÉ EN JEU le 2026-11-15 : ni cibler ni marquer depuis cette fenêtre. (1) Un bouton sécurisé type1 = "target" avec
+-- unit = "nameplateN" ne fait rien (le même bouton avec unit = "player" cible bien le joueur) : le jeu refuse les jetons
+-- de plate dans les boutons sécurisés. (2) SetRaidTarget appelé par l'addon est une action protégée (fenêtre « Platyplus
+-- a été bloqué », pcall ne la rattrape pas). Ne pas réessayer. Ce qui reste possible : survol = infobulle + plate
+-- entourée (Plates.Highlight).
 -- Pas d'OnUpdate permanent : événements regroupés (0,2 s) + un petit ticker (0,5 s) seulement fenêtre affichée en combat.
 local ADDON, ns = ...
 
@@ -948,137 +946,6 @@ function Threat:Status()
     end
 end
 
--- Sonde `/pp menace clic` : un bouton sécurisé à nous (type1 = target) sur le premier jeton nameplateN attaquable.
--- Dit après le clic si le jeu accepte de cibler une plate par un bouton. Création/retrait hors combat seulement.
--- NON VÉRIFIÉ en jeu : c'est précisément ce que cette sonde sert à savoir.
-local probe, probeClose
--- 2e retour : une plate attaquable existait mais c'est (peut-être) déjà ta cible (faux positif sinon : le test serait vrai d'avance)
-local function probeUnit()
-    local skipped = false
-    for i = 1, 40 do
-        local unit = "nameplate" .. i
-        local ok, exists = call(api("UnitExists"), unit)
-        if ok and yes(exists) then
-            local okA, attack = call(api("UnitCanAttack"), "player", unit)
-            if okA and yes(attack) then
-                if sameUnit("target", unit) == false then return unit end
-                skipped = true      -- ta cible, ou comparaison impossible (secret) : on saute
-            end
-        end
-    end
-    return nil, skipped
-end
-
-local function probeReport(unit)
-    local ok, same = call(api("UnitIsUnit"), "target", unit)
-    if not ok or isSecret(same) then
-        ns:Print("sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.")
-    elseif same then
-        ns:Print("sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.")
-    else
-        ns:Print("sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic.")
-    end
-end
-
--- bouton témoin : même modèle, mais unit = "player" (jeton toujours accepté). S'il te cible toi-même, le bouton sécurisé
--- marche et c'est bien le jeton nameplateN que le jeu refuse ; sinon c'est la sonde elle-même qui est en cause.
-local probeSelf
-local function probeSelfReport()
-    local ok, same = call(api("UnitIsUnit"), "target", "player")
-    if ok and not isSecret(same) and same then
-        ns:Print("sonde de ciblage, témoin : le bouton fonctionne (tu t'es ciblé toi-même). Si l'autre bouton ne cible pas le mob, ton jeu refuse les plates.")
-    else
-        ns:Print("sonde de ciblage, témoin : même te cibler toi-même ne marche pas : le bouton de test est en cause, pas les plates.")
-    end
-end
-
--- un bouton de sonde : sécurisé, clic gauche = cibler `unit` ; `report` est appelé 0,2 s après le clic (au relâchement)
-local function probeButton(name, y, report)
-    local ok, button = pcall(CreateFrame, "Button", name, UIParent, "SecureActionButtonTemplate")
-    if not ok or not button then return nil end
-    local W, C = ns.W, ns.W.C
-    button:SetSize(340, 34)
-    button:SetPoint("CENTER", UIParent, "CENTER", 0, y)
-    button:SetFrameStrata("DIALOG")
-    local back = button:CreateTexture(nil, "BACKGROUND")
-    back:SetAllPoints(button)
-    back:SetColorTexture(0.1, 0.12, 0.2, 0.95)
-    button.label = W.Text(button, "GameFontHighlight", C.text, "OVERLAY", 12)
-    button.label:SetPoint("CENTER", button, "CENTER", 0, 0)
-    -- le clic gauche agit au relâchement quelle que soit la CVar ActionButtonUseKeyDown : l'attribut useOnKeyDown = false
-    -- (SecureActionButton_ShouldUseOnKeyDown ne lit la CVar que s'il est nil) ; appui ET relâchement enregistrés pour
-    -- que le clic arrive dans tous les cas
-    button:SetAttribute("useOnKeyDown", false)
-    button:SetAttribute("type1", "target")
-    pcall(button.RegisterForClicks, button, "AnyDown", "AnyUp")
-    button:SetScript("PostClick", function(self, _, down)
-        if down == true then return end
-        local timer = api("C_Timer")
-        if timer and timer.After then timer.After(0.2, function() report(self) end) else report(self) end
-    end)
-    return button
-end
-
-local function removeProbe()
-    if InCombatLockdown() then ns:Print("sonde de ciblage : à retirer hors combat.") return end
-    if probe then probe:Hide() end
-    if probeSelf then probeSelf:Hide() end
-    if probeClose then probeClose:Hide() end
-end
-
-function Threat:Probe()
-    if InCombatLockdown() then
-        ns:Print("sonde de ciblage : hors combat seulement.")
-        return
-    end
-    if probe and probe:IsShown() then removeProbe() return end
-    local unit, skipped = probeUnit()
-    if not unit then
-        if skipped then
-            ns:Print("sonde de ciblage : la seule plate attaquable est déjà ta cible : retire ta cible ou approche un autre mob.")
-        else
-            ns:Print("sonde de ciblage : aucune plate attaquable à portée ; approche-toi d'un mob et recommence.")
-        end
-        return
-    end
-    if not probe then
-        local button = probeButton("PlatyplusThreatProbe", 120, function(self)
-            if self.probeUnit then probeReport(self.probeUnit) end
-        end)
-        if not button then
-            ns:Print("sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.")
-            return
-        end
-        probe = button
-        probeSelf = probeButton("PlatyplusThreatProbeSelf", 80, probeSelfReport)
-        if probeSelf then
-            probeSelf:SetAttribute("unit", "player")
-            probeSelf.label:SetText(ns.T("Témoin : clique ici pour te cibler toi-même"))
-        end
-        probeClose = CreateFrame("Button", nil, UIParent)
-        probeClose:SetSize(24, 24)
-        probeClose:SetPoint("LEFT", probe, "RIGHT", 6, 0)
-        probeClose:SetFrameStrata("DIALOG")
-        local x = probeClose:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        x:SetPoint("CENTER")
-        x:SetText("x")
-        probeClose:SetScript("OnClick", removeProbe)
-        Threat.probeButton, Threat.probeCross = probe, probeClose     -- (pour les tests)
-    end
-    probe.probeUnit = unit
-    probe:SetAttribute("unit", unit)
-    local okN, name = call(api("UnitName"), unit)
-    if okN and name ~= nil and not isSecret(name) then
-        probe.label:SetText(ns.Tf("Clique ici : cibler %s", tostring(name)))
-    else
-        probe.label:SetText(ns.T("Clique ici : cibler ce mob"))
-    end
-    probe:Show()
-    if probeSelf then probeSelf:Show() end
-    probeClose:Show()
-    ns:Print("sonde de ciblage : clique d'abord le bouton du mob, puis le bouton témoin ; les résultats s'affichent ici.")
-end
-
 local function sayWhy()
     local why = hiddenReason()
     if why then ns:Print("fenêtre de menace : pas affichée -", why) end
@@ -1096,10 +963,6 @@ function Threat:Command(arg)
     end
     if arg == "etat" or arg == "état" or arg == "diag" or arg == "status" then
         self:Status()
-        return
-    end
-    if arg == "clic" or arg == "click" then
-        self:Probe()
         return
     end
     if arg == "on" or arg == "off" then

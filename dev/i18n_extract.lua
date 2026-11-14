@@ -122,9 +122,8 @@ run("menace", function()
     hideAll()
     ns.Threat:Test() M.advance(0.5)
     ns.Threat:Test() M.advance(0.3)
-    -- statuts et sonde (/pp menace etat | clic) : messages imprimés ou vus seulement à l'usage
+    -- statuts (/pp menace etat) : messages imprimés ou vus seulement à l'usage
     pcall(ns.Threat.Command, ns.Threat, "etat")
-    pcall(ns.Threat.Command, ns.Threat, "clic")
     pcall(ns.Threat.Command, ns.Threat, "off")
     pcall(ns.Threat.Command, ns.Threat, "on")
     for _, s in ipairs({ "fenêtre de menace : aperçu factice affiché.", "fenêtre de menace : cachée -",
@@ -132,18 +131,7 @@ run("menace", function()
         "fermée par la croix jusqu'au prochain combat", "« Seulement en groupe » est coché et tu n'es pas en groupe",
         "« Seulement en combat » est coché et tu n'es pas en combat",
         "fenêtre de menace : pas affichée -", "rôle retenu :",
-        "lecture des mobs en erreur :", "aucun jeton de mob existant (rien en combat autour de toi).",
-        "sonde de ciblage : hors combat seulement.", "sonde de ciblage : la seule plate attaquable est déjà ta cible : retire ta cible ou approche un autre mob.",
-        "sonde de ciblage : à retirer hors combat.",
-        "sonde de ciblage : aucune plate attaquable à portée ; approche-toi d'un mob et recommence.",
-        "sonde de ciblage : le modèle de bouton sécurisé n'existe pas dans ce jeu.",
-        "sonde de ciblage : clique d'abord le bouton du mob, puis le bouton témoin ; les résultats s'affichent ici.",
-        "Témoin : clique ici pour te cibler toi-même",
-        "sonde de ciblage, témoin : le bouton fonctionne (tu t'es ciblé toi-même). Si l'autre bouton ne cible pas le mob, ton jeu refuse les plates.",
-        "sonde de ciblage, témoin : même te cibler toi-même ne marche pas : le bouton de test est en cause, pas les plates.",
-        "sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.",
-        "sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.",
-        "sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic." }) do ns.T(s) end
+        "lecture des mobs en erreur :", "aucun jeton de mob existant (rien en combat autour de toi)." }) do ns.T(s) end
 end)
 origin("flux")
 run("flux", function()

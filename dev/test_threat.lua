@@ -549,72 +549,11 @@ check(has(printedSince(n1), "croix"), "fermée par la croix : raison donnée")
 check(#M.errors == 0, "aucune erreur (état)")
 leaveCombat(); M.advance(4)
 
-section("sonde /pp menace clic")
-M.inCombat = true
+section("/pp menace clic n'existe plus")
 n1 = #M.printed
 T:Command("clic")
-check(has(printedSince(n1), "hors combat seulement") and T.probeButton == nil, "en combat : refusé, aucun bouton créé")
-M.inCombat = false
-local savedUnits = sim.units
-sim.units = {}
-n1 = #M.printed
-T:Command("clic")
-check(has(printedSince(n1), "aucune plate attaquable") and T.probeButton == nil, "sans plate attaquable : le dit")
-sim.units = savedUnits
-sim.blindIsUnit = false
--- la seule plate attaquable est déjà ta cible : le dire (sinon le test serait vrai d'avance)
-sim.units = { nameplate1 = savedUnits.nameplate1, target = savedUnits.nameplate1 }
-n1 = #M.printed
-T:Command("clic")
-check(has(printedSince(n1), "déjà ta cible") and T.probeButton == nil, "seule plate = ta cible : message, aucun bouton")
-sim.blindIsUnit = true
-n1 = #M.printed
-T:Command("clic")
-check(has(printedSince(n1), "déjà ta cible") and T.probeButton == nil, "comparaison secrète : prudence, plate sautée")
-sim.blindIsUnit = false
-sim.units = savedUnits
-sim.units.target = nil
-T:Command("clic")
-local pb = T.probeButton
-check(S(pb).attrs.useOnKeyDown == false, "useOnKeyDown = false : le clic agit au relâchement quelle que soit la CVar")
-sim.units.target = sim.units.nameplate1
-check(pb ~= nil and S(pb).template == "SecureActionButtonTemplate" and S(pb).shown, "bouton de test sécurisé créé et affiché")
-check(S(pb).attrs.type1 == "target" and S(pb).attrs.unit == "nameplate1", "attributs type1 = target, unit = premier jeton attaquable")
-check(has(tostring(S(pb.label).text), "Clique ici : cibler Alpha"), "libellé « Clique ici : cibler <mob> » (" .. tostring(S(pb.label).text) .. ")")
-n1 = #M.printed
-M.fire(pb, "PostClick"); M.advance(0.5)
-check(has(printedSince(n1), "accepte de cibler une plate"), "cible changée : « ton jeu accepte »")
-sim.units.target = sim.units.nameplate3
-n1 = #M.printed
-M.fire(pb, "PostClick"); M.advance(0.5)
-check(has(printedSince(n1), "refuse de cibler une plate"), "cible inchangée : « ton jeu refuse »")
-sim.blindIsUnit = true
-n1 = #M.printed
-M.fire(pb, "PostClick"); M.advance(0.5)
-check(has(printedSince(n1), "illisible"), "comparaison secrète : « illisible »")
-sim.blindIsUnit = false
--- bouton témoin : unit = "player" ; dit si le bouton sécurisé lui-même fonctionne
-local witness = rawget(_G, "PlatyplusThreatProbeSelf")
-check(witness ~= nil and S(witness).shown and S(witness).attrs.unit == "player" and S(witness).attrs.type1 == "target",
-    "bouton témoin créé : type1 = target, unit = player")
-n1 = #M.printed
-M.fire(witness, "PostClick", "LeftButton", true); M.advance(0.5)
-check(not has(printedSince(n1), "témoin"), "témoin : rien à l'appui du bouton (seul le relâchement compte)")
-M.fire(witness, "PostClick", "LeftButton", false); M.advance(0.5)
-check(has(printedSince(n1), "même te cibler toi-même ne marche pas"), "témoin sans effet : la sonde se dit en cause")
-sim.units.target = sim.units.player
-n1 = #M.printed
-M.fire(witness, "PostClick", "LeftButton", false); M.advance(0.5)
-check(sim.units.player == nil or has(printedSince(n1), "le bouton fonctionne"), "témoin qui cible le joueur : « le bouton fonctionne »")
-sim.units.target = sim.units.nameplate3
-M.inCombat = true
-n1 = #M.printed
-M.fire(T.probeCross, "OnClick")
-check(has(printedSince(n1), "hors combat") and S(pb).shown, "croix en combat : bouton gardé (jamais de Hide en combat)")
-M.inCombat = false
-M.fire(T.probeCross, "OnClick")
-check(S(pb).shown ~= true, "croix hors combat : bouton retiré")
-check(#M.errors == 0, "aucune erreur de lockdown (sonde)")
+check(#M.errors == 0 and T.probeButton == nil, "/pp menace clic : tombe dans le cas par défaut, sans erreur ni bouton")
+check(has(printedSince(n1), "fenêtre de menace :"), "/pp menace clic : état affiché comme pour une commande inconnue")
 
 section("pas d'OnUpdate permanent")
 leaveCombat(); M.advance(5)
