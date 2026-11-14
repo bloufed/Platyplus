@@ -140,8 +140,7 @@ run("menace", function()
         "sonde de ciblage : clique sur le bouton au centre de l'écran ; le résultat s'affichera ici.",
         "sonde de ciblage : résultat illisible (valeur cachée par le jeu) : regarde si ta cible a changé.",
         "sonde de ciblage : ton jeu accepte de cibler une plate par un bouton : le ciblage au clic sera possible.",
-        "sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic.",
-        "fenêtre de menace : le jeu refuse de poser un marqueur depuis la fenêtre (une seule fois signalé)." }) do ns.T(s) end
+        "sonde de ciblage : ton jeu refuse de cibler une plate par un bouton (ta cible n'a pas changé) : pas de ciblage au clic." }) do ns.T(s) end
 end)
 origin("flux")
 run("flux", function()

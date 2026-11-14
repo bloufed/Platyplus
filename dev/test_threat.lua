@@ -274,7 +274,7 @@ ns:Set("threatFlash", true)
 W.Animate = realAnimate
 b.threat = { true, 3 }; refresh()
 
-section("survol : infobulle, plate éclairée, clic droit")
+section("survol : infobulle, plate éclairée")
 local lit = {}
 local realHighlight = P.Highlight
 P.Highlight = function(u) lit[#lit + 1] = u == nil and "nil" or u end
@@ -290,7 +290,7 @@ check(lit[#lit] == "nameplate1", "survol d'Alpha : la plate nameplate1 est mise 
 check(S(GameTooltip).text == "Alpha", "infobulle : le nom")
 check(has(tipLines(), "Vie : 100%") and has(tipLines(), "Sylvara"), "infobulle : vie et qui il attaque (" .. tipLines() .. ")")
 check(has(tipLines(), "Il t'a échappé"), "infobulle tank : « Il t'a échappé » pour un mob perdu")
-check(has(tipLines(), "Clic droit"), "infobulle : ligne d'aide du clic droit")
+check(not has(tipLines(), "Clic droit"), "infobulle : plus de ligne d'aide du clic droit")
 M.fire(rows[3], "OnLeave")
 check(lit[#lit] == "nameplate1", "OnLeave d'une autre ligne : rien n'est retiré")
 M.fire(rows[1], "OnLeave")
@@ -315,34 +315,14 @@ check(lit[#lit] ~= "nameplate2", "ligne survolée disparue : la plate n'est plus
 sim.units.nameplate2 = b
 refresh()
 M.fire(S(frame()).frames[1], "OnLeave")
--- clic droit : crâne
+-- clic sur une ligne : aucun appel protégé (SetRaidTarget est bloqué par le jeu quand il vient d'un addon)
 rows = rowsOf()
 local function rowOf(name) for _, r in ipairs(rowsOf()) do if S(fontStrings(r)[1]).text == name then return r end end end
 M.fire(rowOf("Alpha"), "OnEnter")
 M.fire(rowOf("Alpha"), "OnMouseUp", "RightButton")
-check(raidCalls[#raidCalls] == "nameplate1:0", "clic droit sur un mob déjà marqué Crâne : marqueur retiré (" .. tostring(raidCalls[#raidCalls]) .. ")")
-M.fire(rowOf("Alpha"), "OnMouseUp", "RightButton")
-check(raidCalls[#raidCalls] == "nameplate1:8", "second clic droit : Crâne reposé")
-local nCalls = #raidCalls
 M.fire(rowOf("Alpha"), "OnMouseUp", "LeftButton")
-check(#raidCalls == nCalls, "clic gauche : rien (le bandeau seul déplace)")
 M.fire(rowOf("Charlie"), "OnMouseUp", "RightButton")
-check(raidCalls[#raidCalls] == "nameplate3:8", "clic droit sur un mob sans marqueur : Crâne posé")
-c.marker = nil
-a.marker = secret(3)
-nCalls = #raidCalls
-M.fire(rowOf("Alpha"), "OnMouseUp", "RightButton")
-check(#raidCalls == nCalls + 1 and raidCalls[#raidCalls] == "nameplate1:8" and #M.errors == 0, "marqueur actuel secret : Crâne posé quand même (retrait impossible), sans erreur")
-a.marker = 8
-raidFail = true
-local n0 = #M.printed
-M.fire(rowOf("Alpha"), "OnMouseUp", "RightButton")
-M.fire(rowOf("Alpha"), "OnMouseUp", "RightButton")
-local refused = printedSince(n0)
-check(has(refused, "refuse de poser un marqueur"), "appel refusé : un message")
-check(select(2, refused:gsub("refuse de poser", "")) == 1, "appel refusé : un seul message, pas en boucle")
-check(#M.errors == 0, "appel refusé : aucune erreur")
-raidFail = false
+check(#raidCalls == 0 and #M.errors == 0, "clic droit ou gauche sur une ligne : SetRaidTarget n'est jamais appelé")
 M.fire(rowOf("Alpha"), "OnLeave")
 P.Highlight = realHighlight
 -- porteur lisible : sa cible est toi alors que la menace est « aucune »

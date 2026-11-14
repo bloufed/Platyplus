@@ -14,10 +14,11 @@
 -- d'icône (on ne peut pas savoir s'il y en a un). NON VÉRIFIÉ en jeu.
 -- Pas de clic pour cibler : un bouton sécurisé sur nameplateN/boss/target-de-membre ne peut pas être (re)configuré en
 -- combat (SetAttribute interdit), or les lignes changent en plein combat. À la place : survol = infobulle + mise en
--- évidence de la plate du mob (Plates.Highlight) ; clic droit = marqueur Crâne (SetRaidTarget, en pcall) ; la sonde
--- `/pp menace clic` teste hors combat si le jeu accepte un bouton sécurisé sur un jeton nameplateN.
--- Vérifié dans le code de Forever (doc générée) : SetRaidTarget (HasRestrictions, SecretArguments = AllowedWhenUntainted),
--- GetRaidTargetIndex (retour secret possible). Effet réel du clic droit et de la sonde : NON VÉRIFIÉ en jeu.
+-- évidence de la plate du mob (Plates.Highlight) ; la sonde `/pp menace clic` teste hors combat si le jeu accepte un
+-- bouton sécurisé sur un jeton nameplateN.
+-- VÉRIFIÉ EN JEU (2026-11-15) : SetRaidTarget appelé par l'addon est une action PROTÉGÉE (« Platyplus a été bloqué à
+-- cause d'une action qui n'est utilisable que par l'IU de Blizzard ») ; pcall ne rattrape pas ce blocage. Ne jamais
+-- l'appeler d'ici : un marqueur ne peut venir que d'un bouton sécurisé (type "raidtarget"). Effet de la sonde : NON VÉRIFIÉ.
 -- Pas d'OnUpdate permanent : événements regroupés (0,2 s) + un petit ticker (0,5 s) seulement fenêtre affichée en combat.
 local ADDON, ns = ...
 
@@ -45,7 +46,6 @@ local nextSeq = 0
 local previous = {}                    -- liste précédente { key=, unit= }
 local guarded, guardedCall, applyLock
 local hovered                          -- ligne survolée (infobulle + plate éclairée)
-local skullRefused = false             -- le jeu a refusé le marqueur : une seule ligne de chat
 
 local function api(name) return rawget(_G, name) end
 local function db(key) return ns.db and ns.db[key] end
@@ -389,9 +389,6 @@ local function showTip(row)
     elseif type(v) == "number" then
         tipLine(ns.T("Menace :"), string.format("%d%%", v + 0.5), 0.7, 0.72, 0.76)
     end
-    if not e.test then
-        GameTooltip:AddLine(ns.T("Clic droit : poser ou retirer le marqueur Crâne"), 0.55, 0.58, 0.64, true)
-    end
     GameTooltip:Show()
 end
 
@@ -415,21 +412,6 @@ local function enterRow(row)
     row.hoverTex:SetAlpha(0.1)
     lightPlate(row)
     showTip(row)
-end
-
--- clic droit : marqueur Crâne (8) posé, ou retiré s'il est déjà là (index lisible). Index secret (instances) : on pose
--- quand même le Crâne, le retrait n'est pas possible. Appel refusé : un seul message au 1er refus.
-local function toggleSkull(row)
-    local e = row.e
-    if not e or e.test then return end
-    local okG, current = call(api("GetRaidTargetIndex"), e.unit)
-    if not okG then return end
-    local want = (not isSecret(current) and current == 8) and 0 or 8
-    local ok = call(api("SetRaidTarget"), e.unit, want)
-    if not ok and not skullRefused then
-        skullRefused = true
-        ns:Print("fenêtre de menace : le jeu refuse de poser un marqueur depuis la fenêtre (une seule fois signalé).")
-    end
 end
 
 ---------------------------------------------------------------------------
@@ -492,9 +474,6 @@ local function newRow(i)
 
     row:SetScript("OnEnter", function(self) enterRow(self) end)
     row:SetScript("OnLeave", function(self) if hovered == self then clearHover() end end)
-    row:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then toggleSkull(self) end
-    end)
 
     -- éclat de l'alerte « perdu » : cadre à part (W.Animate prend son OnUpdate)
     row.flash = CreateFrame("Frame", nil, row)

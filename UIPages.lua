@@ -2222,7 +2222,7 @@ local function buildThreat(p)
         tip = "Liste les mobs en combat (plates, boss, cibles de ton groupe). Les couleurs sont celles des plates "
             .. "(onglet Plates). En donjon, le jeu cache certaines valeurs aux addons : la couleur reste juste, "
             .. "mais le tri par vie et certains chiffres peuvent manquer. Survole une ligne : infobulle (état en clair, vie, "
-            .. "menace) et la plate du mob est mise en évidence dans le monde ; clic droit : pose ou retire le marqueur Crâne. "
+            .. "menace) et la plate du mob est mise en évidence dans le monde. "
             .. "Pas de clic pour cibler : le jeu l'interdit en combat.",
     })
     c:Switch({
