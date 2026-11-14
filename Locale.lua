@@ -65,14 +65,43 @@ function M.Resolve(choice)
     return "enUS"
 end
 
--- Appelé une fois, au chargement des réglages : fixe la langue et libère les autres dictionnaires
+-- libère les dictionnaires inutiles (on garde la langue active et l'anglais, le repli)
+function M.Release()
+    for code in pairs(strings) do
+        if code ~= ns.lang and code ~= "enUS" then strings[code] = nil end
+    end
+end
+
+-- Appelé une fois, au chargement des réglages : fixe la langue et libère les autres dictionnaires, sauf avant la
+-- toute première visite guidée (on y choisit sa langue en un clic : UIConfig les libère quand elle se ferme)
 function ns:SetupLocale()
     local choice = self.db and self.db.language
     ns.lang = M.Resolve(choice)
     ns.langReady = true
-    for code in pairs(strings) do
-        if code ~= ns.lang and code ~= "enUS" then strings[code] = nil end
-    end
+    if not (self.db and self.db.welcomeSeen == false) then M.Release() end
+end
+
+-- passe tout de suite à cette langue si son dictionnaire est encore chargé (sinon : il faut un /reload)
+function M.Switch(code)
+    local target = M.Resolve(code)
+    if target ~= "frFR" and not strings[target] then return false end
+    ns.lang = target
+    return true
+end
+
+-- une phrase dans une langue précise (pas forcément la langue active) ; nil si son dictionnaire n'est pas chargé
+function M.In(code, s)
+    if code == "frFR" then return s end
+    local d = strings[code]
+    return d and d[s]
+end
+
+-- langue du client, si Platyplus la propose (sinon nil)
+function M.Client()
+    local getLocale = rawget(_G, "GetLocale")
+    local client = getLocale and getLocale()
+    client = CLIENT_MAP[client] or client
+    if known(client) then return client end
 end
 
 -- Chaînes sans traduction rencontrées (rempli seulement si ns.i18nTrace, pour les tests / `/pp langue manque`)

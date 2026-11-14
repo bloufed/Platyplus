@@ -3,9 +3,10 @@
 ## Notes: All-in-one quality of life: one key to interact, loot, talk and turn in quests; auto-sell, clear resource bar, loot feed and more.
 ## Notes-frFR: Le confort tout-en-un : une touche pour interagir, looter, parler et rendre les quêtes ; vente auto, barre de ressource claire, flux de butin et bien plus.
 ## Author: Blouf
-## Version: 0.3.0
+## Version: 1.0.0
 ## X-License: GPL-3.0-or-later
 ## X-Website: https://github.com/bloufed/Platyplus
+## X-Curse-Project-ID: 1805918
 ## IconTexture: Interface\AddOns\Platyplus\Media\Logo
 ## SavedVariables: PlatyplusDB, PlatyplusDungeonDB
 ## SavedVariablesPerCharacter: PlatyplusCharDB, PlatyplusDungeonCharacterDB

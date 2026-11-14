@@ -107,7 +107,7 @@ check(ns.T(true) == true, "T(booléen) = booléen")
 ns.AddStrings("deDE", { [SECRET] = "traduit" })
 check(ns.T(SECRET) == SECRET, "T(valeur secrète) = la valeur, jamais traduite")
 check(ns.T("") == "", "T(chaîne vide) = chaîne vide")
-check(select("#", ns.Tf("rien")) == 1 and ns.Tf("rien") == "rien", "Tf sans argument")
+check(select("#", ns.Tf("zzz-sans-traduction")) == 1 and ns.Tf("zzz-sans-traduction") == "zzz-sans-traduction", "Tf sans argument")
 
 ---------------------------------------------------------------------------
 section("choix de la langue (auto, client, réglage)")

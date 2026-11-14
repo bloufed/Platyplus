@@ -54,6 +54,8 @@ else
     end
 end
 local ns = M.loadAddon(ADDON_DIR, "Platyplus", files)
+-- deux dictionnaires (le .toc les liste sous Locales\, que la boucle ci-dessus ne prend pas) : changement de langue
+for _, code in ipairs({ "enUS", "deDE" }) do assert(loadfile(ADDON_DIR .. "\\Locales\\" .. code .. ".lua"))("Platyplus", ns) end
 M.fireEvent("ADDON_LOADED", "Platyplus")
 M.fireEvent("PLAYER_LOGIN")
 M.fireEvent("PLAYER_ENTERING_WORLD")
@@ -86,7 +88,8 @@ end
 ---------------------------------------------------------------------------
 section("API et géométrie")
 check(UI and UI.Init and UI.Open and UI.Close and UI.Toggle and UI.Refresh, "ns.UI : Init, Open, Close, Toggle, Refresh")
-check(Pages:Count() == 13, "13 onglets (" .. Pages:Count() .. ")")
+check(Pages:Count() == 14, "14 onglets (" .. Pages:Count() .. ")")
+check(Pages:GetInfo(1).id == "modes", "1er onglet : Modes (ce qu'on voit à la 1re ouverture)")
 check(W.ROW_W + 2 * W.CARD_PAD == W.PAGE_W, "largeur ligne + marges = largeur carte")
 check(rawget(_G, "PlatyplusMinimapButton") == nil, "aucun bouton de minicarte")
 check(UI.frame == nil, "fenêtre pas construite avant la première ouverture")
@@ -111,12 +114,97 @@ M.advance(2.5)
 local welcome = rawget(_G, "PlatyplusWelcome")
 check(welcome ~= nil and welcome:IsShown(), "première connexion : la présentation s'ouvre seule")
 check(ns.db.welcomeSeen == true, "marquée comme vue (elle ne reviendra pas d'elle-même)")
-local tiles = 0
-for _, c in ipairs(S(welcome).frames) do if S(c).w == math.floor((660 - 56 - 14) / 2) then tiles = tiles + 1 end end
-check(tiles == 6, "six tuiles de fonctions (" .. tiles .. ")")
+check(welcome.steps and #welcome.steps == 10, "visite en 10 étapes dans la colonne de gauche (" .. tostring(welcome.steps and #welcome.steps) .. ")")
+check(welcome.step == 1 and welcome.start:IsShown() and welcome.go:IsShown() and not welcome.back:IsShown(),
+    "étape 1 : présentation, boutons « Commencer la visite » et « Passer la visite »")
 local hasLogo = false
-for _, r in ipairs(S(welcome).regions) do if S(r).texture == ns.LOGO then hasLogo = true end end
-check(hasLogo, "logo Platyplus en tête")
+for _, r in ipairs(S(welcome.pages[1]).regions) do if S(r).texture == ns.LOGO then hasLogo = true end end
+check(hasLogo, "logo Platyplus en tête de la présentation")
+M.fire(welcome.start, "OnClick", "LeftButton")
+check(welcome.step == 2 and welcome.next:IsShown() and welcome.back:IsShown(), "« Commencer » : étape 2 (le mode), Précédent / Suivant")
+local picker = welcome.pages[2].widgets and welcome.pages[2].widgets[1]
+check(picker and picker.tiles and #picker.tiles == 4, "étape 2 : quatre modes à choisir")
+
+-- modes prêts à l'emploi
+section("modes prêts à l'emploi")
+local function tileOf(id) for _, t in ipairs(picker.tiles) do if t.mode.id == id then return t end end end
+check(ns:CurrentMode() == "recommended" and tileOf("recommended").active, "au départ : mode Recommandé (= réglages par défaut), tuile surlignée")
+for _, mode in ipairs(ns.MODES) do
+    for _, key in ipairs(ns.ModeKeys()) do
+        if type(ns:ModeValue(mode, key)) ~= "boolean" then check(false, "mode " .. mode.id .. " : " .. key .. " n'est pas un interrupteur") end
+    end
+    for key in pairs(mode.set) do check(type(ns.DEFAULTS[key]) == "boolean", "mode " .. mode.id .. " : clé connue " .. key) end
+end
+M.fire(tileOf("complete"), "OnClick", "LeftButton")
+check(ns:CurrentMode() == "complete" and ns.db.acceptSummon and ns.db.autoOpenMail and ns.db.instantLoot,
+    "clic sur Complet : appliqué tout de suite (invocations, courrier... allumés)")
+check(tileOf("complete").active and not tileOf("recommended").active, "la tuile Complet est surlignée")
+ns:Set("procAlert", false)
+check(ns:CurrentMode() == nil and not tileOf("complete").active, "un réglage changé : réglages personnalisés, plus aucune tuile surlignée")
+check(S(picker.status).text:find("Complet", 1, true) ~= nil, "ligne d'état : personnalisés à partir de Complet")
+M.fire(tileOf("minimal"), "OnClick", "LeftButton")
+check(tileOf("minimal").armed and ns.db.procAlert == false and ns.db.interact == true, "réglages personnalisés : 1er clic = confirmation demandée, rien ne change")
+M.advance(3.5)
+check(not tileOf("minimal").armed, "la demande de confirmation s'efface après 3 s")
+M.fire(tileOf("minimal"), "OnClick", "LeftButton")
+M.fire(tileOf("minimal"), "OnClick", "LeftButton")
+check(ns:CurrentMode() == "minimal" and not ns.db.interact and not ns.db.plates and not ns.db.chatWindow and ns.db.launcher
+    and not ns.db.dock, "Minimal (2e clic) : tout coupé sauf l'icône")
+check(ns.db.key == "F" and ns.db.swingOffHand == true, "un mode ne touche ni la touche ni les sous-réglages hors liste")
+M.inCombat = true
+local okCombat = ns:ApplyMode("recommended")
+M.inCombat = false
+check(not okCombat and ns:CurrentMode() == "minimal", "refusé en combat")
+SlashCmdList.PLATYPLUS("mode immersif")
+check(ns:CurrentMode() == "immersive" and ns.db.questWindow and not ns.db.procAlert and ns.db.hideErrors
+    and not ns.db.gossipOptions, "/pp mode immersif")
+SlashCmdList.PLATYPLUS("mode n'importe")
+check(ns:CurrentMode() == "immersive", "/pp mode inconnu : rien ne change")
+M.fire(tileOf("recommended"), "OnClick", "LeftButton")
+local same = true
+for _, key in ipairs(ns.ModeKeys()) do if ns.db[key] ~= ns.DEFAULTS[key] then same = false end end
+check(same and ns:CurrentMode() == "recommended" and ns.db.mode == "recommended", "retour à Recommandé : tous les interrupteurs par défaut")
+
+section("visite guidée (suite)")
+M.fire(welcome.next, "OnClick", "LeftButton")
+check(welcome.step == 3 and welcome.pages[3].widgets and welcome.pages[3].widgets[1] ~= nil, "étape 3 : capture de la touche d'interaction")
+for _ = 4, 10 do M.fire(welcome.next, "OnClick", "LeftButton") end
+check(welcome.step == 10 and welcome.open:IsShown() and welcome.finish:IsShown() and not welcome.next:IsShown(),
+    "dernière étape : « Ouvrir les options » et « Terminer »")
+M.fire(welcome.steps[6], "OnClick", "LeftButton")
+check(welcome.step == 6, "clic dans la colonne : va à l'étape (Butin)")
+local loot = welcome.pages[6].widgets
+check(loot and #loot == 3, "étape Butin : trois réglages rapides")
+local before = ns.db.instantLoot
+M.fire(loot[1], "OnClick", "LeftButton")
+check(ns.db.instantLoot == not before, "un interrupteur de la visite change le réglage")
+M.fire(loot[1], "OnClick", "LeftButton")
+check(ns.db.instantLoot == before, "et le remet")
+for _, page in pairs(welcome.pages) do
+    for _, w in ipairs(page.widgets or {}) do
+        if w.opts and w.opts.key then check(ns.DEFAULTS[w.opts.key] ~= nil, "réglage rapide connu : " .. w.opts.key) end
+    end
+end
+-- lien « onglet « Butin » › » : options ouvertes sur cet onglet, la visite reprendra ici
+local link
+for _, c in ipairs(S(welcome.pages[6]).frames) do
+    if S(c).scripts and S(c).scripts.OnClick and c ~= welcome.pages[6] then
+        for _, r in ipairs(S(c).regions) do
+            if type(S(r).text) == "string" and S(r).text:find("Butin", 1, true) then link = c end
+        end
+    end
+end
+check(link ~= nil, "lien vers l'onglet Butin")
+if link then
+    M.fire(link, "OnClick", "LeftButton")
+    check(not welcome:IsShown() and UI.frame and UI.frame:IsShown(), "le lien ferme la visite et ouvre les options")
+    check(Pages:GetInfo(UI.current).id == "loot", "options ouvertes sur l'onglet Butin")
+    UI:ShowWelcome()
+    check(welcome:IsShown() and welcome.step == 6, "/pp bienvenue reprend à l'étape du lien")
+end
+M.fire(welcome.finish, "OnClick", "LeftButton")
+UI:ShowWelcome()
+check(welcome.step == 1, "après une fermeture normale, la visite repart du début")
 UI:Close()
 gameEscape()
 check(not welcome:IsShown(), "Échap ferme la présentation (UISpecialFrames)")
@@ -127,6 +215,34 @@ M.fire(welcome.open, "OnClick", "LeftButton")
 check(not welcome:IsShown() and UI.frame and UI.frame:IsShown(), "« Ouvrir les options » : présentation fermée, options ouvertes")
 M.advance(5)
 check(not welcome:IsShown(), "elle ne se rouvre pas toute seule")
+
+section("langue, en tête de la visite")
+check(ns.DEFAULTS.language == "enUS", "installation neuve : Platyplus démarre en anglais")
+UI:ShowWelcome(1)
+local function chip(fr, code)
+    for _, b in ipairs(fr.pages[1].langBlock and fr.pages[1].langBlock.chips or {}) do if b.code == code then return b end end
+end
+check(welcome.pages[1].langBlock and #welcome.pages[1].langBlock.chips == 7, "page d'accueil : une pastille par langue (7)")
+M.fire(chip(welcome, "enUS"), "OnClick", "LeftButton")
+local w2 = rawget(_G, "PlatyplusWelcome")
+check(ns.db.language == "enUS" and ns.lang == "enUS", "clic sur English : langue changée tout de suite")
+check(w2 ~= welcome and w2:IsShown() and not welcome:IsShown() and w2.step == 1, "la visite est reconstruite dans la nouvelle langue")
+check(S(w2.steps[1].label).text == "Welcome", "colonne des étapes en anglais (" .. tostring(S(w2.steps[1].label).text) .. ")")
+M.fire(chip(w2, "frFR"), "OnClick", "LeftButton")
+welcome = rawget(_G, "PlatyplusWelcome")
+check(ns.lang == "frFR" and ns.db.language == "frFR" and S(welcome.steps[1].label).text == "Bienvenue", "retour en français")
+local esc = 0
+for _, n in ipairs(UISpecialFrames) do if n == "PlatyplusWelcome" then esc = esc + 1 end end
+check(esc == 1, "Échap : la visite reconstruite n'est inscrite qu'une fois")
+welcome:Hide()
+check(ns.Strings.deDE == nil and ns.Strings.enUS ~= nil, "visite fermée : dictionnaires inutiles libérés (anglais gardé)")
+UI:ShowWelcome(1)
+M.fire(chip(welcome, "deDE"), "OnClick", "LeftButton")
+check(ns.db.language == "deDE" and ns.lang == "frFR" and rawget(_G, "PlatyplusWelcome") == welcome,
+    "dictionnaire déjà libéré : choix gardé pour le /reload, la visite reste")
+ns:Set("language", "frFR")
+UI.langSwitched = nil
+welcome:Hide()
 
 ---------------------------------------------------------------------------
 section("onglets")
@@ -165,7 +281,7 @@ UI:SelectTab(combat)
 M.advance(0.3)
 local subs = {}
 for _, s in ipairs(UI.subs) do if S(s).shown then subs[#subs + 1] = s end end
-check(#subs >= 5 and subs[1].card and subs[1].text:GetText() == "Barre de ressource", "sommaire de Combat sous son onglet : " .. #subs .. " cartes")
+check(#subs >= 5 and subs[1].card and subs[1].text:GetText() == "Barre de coups blancs", "sommaire de Combat sous son onglet : " .. #subs .. " cartes")
 check(select(5, UI.tabs[combat + 1]:GetPoint(1)) < select(5, UI.tabs[combat]:GetPoint(1)) - 32 - 20 * #subs,
     "les onglets suivants descendent sous le sommaire")
 check(subs[1].active and not subs[2].active, "en haut de la page : la première carte allumée")
@@ -183,7 +299,6 @@ check(shownSubs == 2 or shownSubs == 0, "autre onglet : le sommaire de Combat se
 
 ---------------------------------------------------------------------------
 section("interrupteurs, curseurs, menus")
-ns:Set("hud", true)          -- barre de rage coupée par défaut : on l'allume pour éprouver aussi ses curseurs
 local switches, sliders, dropdowns = 0, 0, 0
 local nSw, nSl, nDd = 0, 0, 0
 for i = 1, Pages:Count() do
@@ -233,7 +348,6 @@ end
 check(switches == nSw and nSw >= 45, "interrupteurs qui basculent la bonne clé : " .. switches .. " / " .. nSw)
 check(sliders == nSl and nSl >= 10, "curseurs (max puis clic droit = défaut) : " .. sliders .. " / " .. nSl)
 check(dropdowns == nDd and nDd >= 5, "menus déroulants (choix appliqué, liste refermée) : " .. dropdowns .. " / " .. nDd)
-ns:Set("hud", false)
 
 M.realPrint("-- sous-options grisées")
 ns:Set("floatLoot", false)
@@ -274,9 +388,10 @@ end
 
 ---------------------------------------------------------------------------
 section("capteur de touche")
-UI:SelectTab(1)
+local GENERAL = tabOf("general")
+UI:SelectTab(GENERAL)
 local capture, eatCapture
-for _, e in ipairs(rowsOf(UI.pages[1])) do
+for _, e in ipairs(rowsOf(UI.pages[GENERAL])) do
     if e.w.reset and e.w.opts and e.w.opts.key == "key" then capture = e.w end
     if e.w.reset and e.w.opts and e.w.opts.key == "eatKey" then eatCapture = e.w end
 end
@@ -336,9 +451,9 @@ check(not eatZone.IsListening() and UI.frame:IsShown() and ns.db.eatKey == "", "
 -- Échap au repos : la fenêtre se ferme
 check(pressKey("ESCAPE") == "jeu" and not UI.frame:IsShown(), "Échap au repos : ferme la fenêtre Platyplus")
 UI:Open()
-UI:SelectTab(1)
+UI:SelectTab(GENERAL)
 M.fire(zone, "OnMouseDown", "LeftButton")
-UI:SelectTab(2)
+UI:SelectTab(tabOf("resources"))
 check(S(zone).scripts.OnUpdate == nil and #keyboardFrames() == 0, "changer d'onglet arrête l'écoute")
 
 ---------------------------------------------------------------------------
@@ -518,9 +633,9 @@ check(not S(f).shown, "Toggle ferme")
 ns:Set("interact", false)
 UI:Toggle()
 check(S(f).shown, "Toggle rouvre")
-UI:SelectTab(1)
+UI:SelectTab(GENERAL)
 local interactRow
-for _, e in ipairs(rowsOf(UI.pages[1])) do if e.w.opts and e.w.opts.key == "interact" then interactRow = e.w end end
+for _, e in ipairs(rowsOf(UI.pages[GENERAL])) do if e.w.opts and e.w.opts.key == "interact" then interactRow = e.w end end
 check(interactRow.value == false, "un réglage changé fenêtre fermée est relu à la réouverture")
 ns:Set("interact", true)
 SlashCmdList.PLATYPLUS("")

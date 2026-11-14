@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.0
+
+Platyplus reaches 1.0: a guided tour, ready-made modes, and a Platyplus look for the dungeon journal.
+
+- **Ready-made modes**: pick a starting point in one click — **Recommended** (the default), **Complete**
+  (everything on, automations included), **Immersive** (fewer windows and numbers) or **Minimal** (everything off
+  except the icon). On the tour's second page, in the new **Modes** tab (first tab of `/pp`) or with `/pp mode`.
+  Hover a mode to see what it changes; your key, lists, positions and colors are never touched.
+- **Guided tour**: the first-login welcome is now a short tour — one welcome page, then one small page per big
+  feature (the key, combat, threat, loot, selling, windows, the icon) with its main switches and a link to its
+  tab, and a last page with the commands to remember. Replay it with `/pp bienvenue` (also `/pp tuto`), from the
+  Advanced tab or from the game's AddOns options.
+- **Language first**: Platyplus now starts in English, and the first page of the tour offers every language
+  (Français, Deutsch, Español, Italiano, Português, Русский) in one click; the tour switches right away. If your
+  game is in one of them, a line in that language points you to it. Existing installs keep their language.
+- **Dungeon journal**: with DungeonJournal by Exehn installed next to Platyplus, its window now gets the Platyplus
+  look, a "Dungeons" column on the left (advised level, quests done, click to open) and an "At your level" row on
+  the home page. Each has its switch in the Dungeons tab. Nothing of that addon is bundled or modified.
+- **Removed**: the resource bar, the resource number on portraits and the spell costs on action buttons. The swing
+  timer stays (Combat tab). Their old settings are cleaned from your saved variables.
+- **Combat tab** reordered: swing timer, buff reminders, threat window, healer mana, mob controls.
+- **Texts**: options, help and README reviewed in French and English (clearer tab descriptions, `/pp help` listed,
+  English wording fixes); the quick menu of the icon gains a "Proc alert" switch.
+
 ## 0.3.0 — first public release
 
 Platyplus goes public: everything built while leveling on WoW Forever, in one addon.

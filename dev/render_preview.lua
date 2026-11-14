@@ -534,7 +534,6 @@ ns.db.duration = 120
 -- positions réelles disponibles : les modules recalculent leur placement
 if ns.Launcher and ns.Launcher.Refresh then ns.Launcher:Refresh() end
 if ns.Float and ns.Float.Test then ns.Float:Test() end
-if ns.ResourceBar and ns.ResourceBar.Preview then ns.ResourceBar:Preview(120) end
 def("UnitAttackSpeed", function() return 2.6, 1.8 end)
 def("C_SwingTimer", { IsTargetWithinSwingRange = function() return true end })
 if ns.SwingBar and ns.SwingBar.Preview then ns.SwingBar:Preview(120) end
@@ -579,9 +578,16 @@ end
 -- présentation « Bienvenue dans Platyplus »
 if ns.UI and ns.UI.ShowWelcome then
     if ns.UI.Close then ns.UI:Close() end
-    ns.UI:ShowWelcome()
+    ns.UI:ShowWelcome(1)
     M.advance(0.3)
     shot("bienvenue")
+    -- une capture par étape de la visite guidée : bienvenue_2 (le mode) ... bienvenue_10 (fin)
+    local wf = ns.UI.welcome
+    for i = 2, (wf and wf.steps and #wf.steps or 0) do
+        wf:ShowStep(i)
+        M.advance(0.3)
+        shot("bienvenue_" .. i)
+    end
 end
 
 -- fenêtre du personnage : chaque onglet

@@ -70,7 +70,12 @@ for _, s in ipairs({ "Par défaut : %s", "activé", "désactivé", "Carré", "L�
 -- journal des donjons absent (version publique) : onglet Donjons et messages de /pp donjons
 for _, s in ipairs({
     "Le journal des donjons est celui de l'addon DungeonJournal d'Exehn, installé à part : Platyplus l'ouvre d'ici, depuis le menu de l'icône et avec /pp donjons.",
-    "Le journal des donjons n'est pas inclus dans cette version de Platyplus. Installe l'addon DungeonJournal d'Exehn depuis CurseForge : Platyplus l'ouvrira ensuite depuis cet onglet, depuis le menu de l'icône et avec /pp donjons.",
+    "Le journal des donjons n'est pas inclus dans cette version de Platyplus. Installe l'addon DungeonJournal d'Exehn depuis CurseForge : Platyplus l'ouvrira ensuite depuis cet onglet, depuis le menu de l'icône et avec /pp donjons, et posera dessus sa liste des donjons, « À ton niveau » et son style.",
+    -- surcharge de l'addon séparé (onglet Donjons quand DungeonJournalPlus.Overlay() est vrai)
+    "L'addon DungeonJournal séparé est activé : c'est lui qui tourne, avec la liste des donjons, « À ton niveau » et le style de Platyplus posés dessus. Le journal intégré à Platyplus reste éteint et garde une copie de ses réglages, de tes favoris et de ta progression : désactive DungeonJournal dans la liste des addons (écran de choix du personnage) puis relance le jeu pour revenir au journal intégré.",
+    "Le journal des donjons est celui de l'addon DungeonJournal d'Exehn, installé à part. Platyplus l'ouvre d'ici, depuis le menu de l'icône et avec /pp donjons, et pose dessus sa liste des donjons, « À ton niveau » et son style, sans rien changer dans l'addon.",
+    "Chaque donjon : ses boss et leur butin, ses quêtes (où les prendre, les suites de quêtes, les récompenses), son plan et le chemin jusqu'à l'entrée. Ouvrir : /dj, /pp donjons, le menu de l'icône Platyplus, ou la touche de l'addon DungeonJournal.",
+    "DungeonJournal, par Exehn : le journal, ses données (boss, butin, quêtes, plans, routes) et ses images viennent de son addon, installé à part ; Platyplus n'en embarque rien. Platyplus y ajoute la liste de gauche, « À ton niveau » et son style en passant derrière lui, sans rien modifier dans l'addon : éteins les trois réglages (puis /reload) et il retrouve son look d'origine.",
     "Ouvre le journal de l'addon DungeonJournal (aussi : /dj).",
     "le journal des donjons n'est pas inclus dans cette version : installe l'addon DungeonJournal d'Exehn (CurseForge), Platyplus l'ouvrira d'ici.",
     "journal des donjons indisponible (le dossier DungeonJournal n'a pas pu se charger).",
@@ -185,14 +190,21 @@ end)
 
 -- bienvenue
 origin("bienvenue")
-if ns.UI and ns.UI.ShowWelcome then run("bienvenue", function() ns.UI:ShowWelcome() end) M.advance(0.3) end
+if ns.UI and ns.UI.ShowWelcome then
+    run("bienvenue", function()
+        ns.UI:ShowWelcome(1)
+        local wf = ns.UI.welcome
+        for i = 2, (wf and wf.steps and #wf.steps or 0) do wf:ShowStep(i) end   -- chaque page de la visite guidée
+    end)
+    M.advance(0.3)
+end
 
 -- commandes /pp (messages d'aide et d'état)
 origin("commandes")
 local slash = SlashCmdList and SlashCmdList.PLATYPLUS
 if slash then
     for _, cmd in ipairs({ "help", "langue", "langue enUS", "langue xx", "perf", "list", "plates", "proc", "buffs",
-                           "healer", "spam", "etincelles", "chat", "fenetres", "key", "rows", "time" }) do
+                           "healer", "spam", "etincelles", "chat", "fenetres", "key", "rows", "time", "mode", "mode xx" }) do
         run("/pp " .. cmd, function() slash(cmd) end)
     end
 end
@@ -266,7 +278,7 @@ try("journal", function()
     end
 end)
 origin("mots")
-for _, s in ipairs({ "coût des sorts", "portrait", "barre de ressource", "Ressource", "Focalisation", "Énergie",
+for _, s in ipairs({ "Ressource", "Focalisation", "Énergie",
     "Puissance runique", "Points de combo", "Fragments d'âme", "Puissance astrale", "Puissance sacrée", "Maelström",
     "Folie", "Charges arcaniques", "Fureur", "Douleur", "Essence", "Runes", "Mana", "Rage", "Chi",
     "De la nourriture", "De l'eau", "Une pierre de soins", "M'invoquer",
@@ -278,9 +290,9 @@ for _, s in ipairs({ "coût des sorts", "portrait", "barre de ressource", "Resso
 -- (textes qui n'apparaissent qu'à l'usage : conditions rares, messages d'état...)
 local STATIC_FILES = { "BagWindow", "CharacterWindow", "CharacterTabs", "QuestWindow", "QuestCards", "QuestPage",
     "ChatWindow", "ChatPlus", "Misc", "LootRolls", "Launcher", "Threat", "Windows", "Float",
-    "Procs", "Buffs", "Plates", "MobControls", "HealerMana", "Auction", "Prices", "Craft", "Resources", "ResourceBar",
+    "Procs", "Buffs", "Plates", "MobControls", "HealerMana", "Auction", "Prices", "Craft", "ResourceBar",
     "Junk", "Tweaks", "Sparkles", "Dialog", "Interact", "Loot", "Gains", "Quests", "GameSettings",
-    "DungeonJournalPlus", "DungeonJournalSkin", "Traducteur", "Core" }
+    "DungeonJournalPlus", "DungeonJournalSkin", "Traducteur", "Core", "UIConfig", "Resources" }
 local function scanFile(name)
     local fh = io.open(ADDON_DIR .. "\\" .. name .. ".lua", "rb")
     if not fh then return 0 end

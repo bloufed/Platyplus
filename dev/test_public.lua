@@ -80,6 +80,8 @@ if #M.errors > 0 then M.report() M.errors = {} end
 local P = ns.DungeonPlus
 check(ns.Dungeon == nil, "ns.Dungeon absent")
 check(P and not P.Bundled() and not P.Standalone() and not P.Available(), "Bundled/Standalone/Available : faux")
+check(not P.Overlay() and not P.Tunable() and ns.DungeonSkin.external == nil and not ns.DungeonSkin.active,
+    "pas de surcharge : ni liste ni style à poser")
 local before = #M.printed
 P.Toggle()
 local said = table.concat(M.printed, "\n", before + 1)
@@ -113,6 +115,8 @@ standaloneLoaded = true
 local opened = 0
 def("ForeverDungeonJournal_Toggle", function() opened = opened + 1 end)
 check(P.Standalone() and P.Available() and not P.Bundled(), "Standalone et Available vrais, pas de journal intégré")
+-- (la surcharge se branche au chargement, quand l'addon séparé est déjà là : test_surcharge.lua)
+check(not P.Overlay(), "addon apparu après coup, sans son espace de noms : Platyplus l'ouvre, sans surcharge")
 before = #M.printed
 P.Toggle()
 check(opened == 1, "Toggle() appelle ForeverDungeonJournal_Toggle")

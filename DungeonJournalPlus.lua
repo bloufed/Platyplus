@@ -9,8 +9,11 @@
 -- * Accueil (réglage dungeonFit) : sur chaque carte, la tranche de niveau prend la même couleur, une pastille
 --   « À ton niveau » ou « Bientôt » s'ajoute, et la première fois qu'on ouvre l'accueil il défile jusqu'aux
 --   donjons de ton niveau.
--- Le journal prévient par les points d'accroche de DungeonJournalGlue.lua (PpViewChanged, PpAfterHome) ; ses pages
--- s'ouvrent par les siennes (PpSelectDungeon, PpShowHome), ajoutées par dev/make_dungeonjournal.py.
+-- Journal intégré : il prévient par les points d'accroche de DungeonJournalGlue.lua (PpViewChanged, PpAfterHome) ;
+-- ses pages s'ouvrent par les siennes (PpSelectDungeon, PpShowHome), ajoutées par dev/make_dungeonjournal.py.
+-- Addon DungeonJournal d'Exehn installé à part (pas de journal intégré actif) : la même colonne et le même accueil
+-- sont posés SUR sa fenêtre, de l'extérieur (« surcharge », en bas du fichier) : aucun de ses fichiers n'est
+-- embarqué, aucune de ses fonctions n'est remplacée, Platyplus passe derrière lui par hooksecurefunc / HookScript.
 local ADDON, ns = ...
 
 local Plus = {}
@@ -23,7 +26,9 @@ local LIST_TOP = 92         -- haut de la liste (sous l'en-tête et « Accueil �
 Plus.SIDE_W = SIDE_W
 local floor, min, max = math.floor, math.min, math.max
 
-local D                     -- ns.Dungeon (le journal)
+local D                     -- le journal : ns.Dungeon (intégré) ou l'espace de noms de l'addon séparé (surcharge)
+local external = false      -- D est l'addon d'Exehn installé à part
+local EXT_NS, EXT_FRAME, EXT_DB = "ForeverDungeonJournal_NS", "ForeverDungeonJournalFrame", "ForeverDungeonJournalDB"
 local side, rows, homeRow, scroll, content, thumb = nil, {}, nil, nil, nil, nil
 local pending = false
 local scrolledHome = false
@@ -81,7 +86,7 @@ function Plus.Progress(dungeon)
     local done, total = 0, 0
     if type(dungeon) ~= "table" or not D then return 0, 0 end
     local fac = faction()
-    local matches = D.PpQuestMatchesFaction
+    local matches = D.PpQuestMatchesFaction or D.QuestMatchesFaction   -- (la 2e : exposée par l'addon depuis la 2.0)
     for _, q in ipairs(dungeon.quests or {}) do
         local ok, mine = true, true
         if matches then ok, mine = pcall(matches, q, fac) end
@@ -151,7 +156,40 @@ end
 ---------------------------------------------------------------------------
 -- Colonne de gauche
 ---------------------------------------------------------------------------
-local function journal() return rawget(_G, "PlatyplusDungeonFrame") end
+local function journal() return rawget(_G, external and EXT_FRAME or "PlatyplusDungeonFrame") end
+
+-- Ouvrir l'accueil ou un donjon. Journal intégré : ses pages (PpShowHome, PpSelectDungeon). Addon séparé : ce
+-- qu'il expose lui-même — son bouton « Donjons » (retour à l'accueil) et FDJ.OpenBossPage / OpenQuestPage, en
+-- gardant l'onglet où l'on est (ForeverDungeonJournalDB.lastMode).
+local function showHome()
+    if not external then return call("PpShowHome") end
+    local f = journal()
+    local back = f and f.backButton
+    if not (back and f.currentView ~= "home") then return end
+    if type(back.Click) == "function" then pcall(back.Click, back) end
+    if f.currentView ~= "home" then
+        -- (clic sans effet, bouton caché ou désactivé : son script directement)
+        local click = back.GetScript and back:GetScript("OnClick")
+        if type(click) == "function" then pcall(click, back, "LeftButton") end
+    end
+end
+
+local function selectDungeon(name)
+    if not external then return call("PpSelectDungeon", name) end
+    local d = D.DB[name]
+    if not d then return end
+    if call("IsDungeonLocked", name) then
+        call("RPGLockedNotice", name)   -- (mode RPG : le journal dit pourquoi, comme sur ses cartes)
+        return
+    end
+    if d.previewOnly and not (type(D.DUNGEON_MAPS) == "table" and D.DUNGEON_MAPS[name]) then return end
+    local db = rawget(_G, EXT_DB)
+    if type(db) == "table" and db.lastMode == "quests" and type(D.OpenQuestPage) == "function" then
+        call("OpenQuestPage", name)
+    else
+        call("OpenBossPage", name)
+    end
+end
 
 local function paintRow(row)
     local C = ns.W.C
@@ -199,9 +237,9 @@ end
 
 local function rowClick(row)
     if row.home then
-        call("PpShowHome")
+        showHome()
     elseif row.dungeon then
-        call("PpSelectDungeon", row.dungeon)
+        selectDungeon(row.dungeon)
     end
     Plus.ViewChanged()
 end
@@ -316,6 +354,7 @@ end
 local function build(f)
     local W, C = ns.W, ns.W.C
     side = CreateFrame("Frame", "PlatyplusDungeonList", f)
+    side.ppOwn = true   -- (à Platyplus : le style posé sur l'addon séparé n'y touche pas)
     side:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, 0)
     side:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 0, 0)
     side:SetWidth(SIDE_W)
@@ -401,7 +440,9 @@ local function build(f)
         f:ClearAllPoints()
         f:SetPoint("CENTER", UIParent, relPoint or "CENTER", SIDE_W / 2, y or 0)
     end
-    side:HookScript("OnShow", function() Plus.Refresh() end)
+    -- (addon séparé : une erreur ici ne remonte pas au joueur)
+    side:HookScript("OnShow", external and Plus.Quiet and Plus.Quiet(function() Plus.Refresh() end)
+        or function() Plus.Refresh() end)
 end
 
 function Plus.Refresh()
@@ -453,28 +494,40 @@ function Plus.ViewChanged()
         pending = false
         local f = journal()
         if not f then return end
-        if ns.db.dungeonList ~= false and not side then build(f) end
+        if ns.db.dungeonList ~= false and not side then
+            -- (addon séparé : la colonne est à Platyplus, son style ne la prend pas pour un morceau du journal)
+            local skin = ns.DungeonSkin
+            if skin and skin.Own then skin.Own(build, f) else build(f) end
+        end
         if side then
             side:SetShown(ns.db.dungeonList ~= false)
             Plus.Refresh()
         end
     end
+    if external and Plus.Quiet then run = Plus.Quiet(run) end   -- (surcharge : jamais de message d'erreur)
     if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
 end
 
 ---------------------------------------------------------------------------
 -- Accueil : niveau conseillé sur les cartes
 ---------------------------------------------------------------------------
-local function cardBadge(card)
-    if card.ppFit then return card.ppFit end
+local function newBadge(card)
     local W, C = ns.W, ns.W.C
     local b = CreateFrame("Frame", nil, card)   -- (un cran au-dessus de la carte et de son image)
+    b.ppOwn = true
     b:SetSize(90, 18)
     b.pill = W.Pill(b, "ARTWORK", 0, 18)
     b.text = W.Text(b, "GameFontHighlightSmall", C.text, "OVERLAY", 10)
     b.text:SetPoint("CENTER", b, "CENTER", 0, 0)
     card.ppFit = b
     return b
+end
+
+local function cardBadge(card)
+    if card.ppFit then return card.ppFit end
+    local skin = ns.DungeonSkin
+    if skin and skin.Own then return skin.Own(newBadge, card) end
+    return newBadge(card)
 end
 
 function Plus.AfterHome(cards, shown)
@@ -490,10 +543,15 @@ function Plus.AfterHome(cards, shown)
             local fit = on and Plus.Fit(lvl, lo, hi) or nil
             local badge = (fit == "good" or fit == "soon") and cardBadge(card) or card.ppFit
             if fit and card.meta then
+                -- (notre couleur, posée telle quelle : sur l'addon séparé, le style ne la reconvertit pas)
                 local c = fitColor(fit)
-                card.meta:SetTextColor(c[1], c[2], c[3])
+                local skin = ns.DungeonSkin
+                if skin and skin.Direct then skin.Direct(card.meta, "SetTextColor", c[1], c[2], c[3])
+                else card.meta:SetTextColor(c[1], c[2], c[3]) end
             elseif card.meta and D.PpC then
                 card.meta:SetTextColor(D.PpC("text", 1.00, 0.95, 0.82))
+            elseif card.meta and external then
+                card.meta:SetTextColor(1.00, 0.95, 0.82)   -- la couleur du journal (le style, s'il est là, la convertit)
             end
             if badge then
                 local show = (fit == "good" or fit == "soon") and not d.previewOnly
@@ -533,7 +591,7 @@ end
 -- Ouvrir le journal depuis Platyplus (menu de l'icône, /pp donjons, onglet Donjons)
 ---------------------------------------------------------------------------
 -- Trois états, sans dépendre de ns.Dungeon : journal intégré (dossier DungeonJournal/, absent de la version
--- publique), addon DungeonJournal d'Exehn installé à part, ou aucun des deux.
+-- publique), addon DungeonJournal d'Exehn installé à part (Platyplus le surcharge : Plus.Overlay()), ou aucun.
 function Plus.Bundled()
     return ns.Dungeon ~= nil
 end
@@ -553,6 +611,16 @@ function Plus.Standalone()
     return ok and v and true or false
 end
 
+-- l'addon séparé est chargé ET Platyplus s'y est branché : la liste, « À ton niveau » et le style s'y appliquent
+function Plus.Overlay()
+    return external
+end
+
+-- les réglages dungeonList / dungeonFit / dungeonSkin ont un effet (journal intégré actif, ou surcharge)
+function Plus.Tunable()
+    return external or Plus.BundledActive()
+end
+
 -- un journal est ouvrable, d'une façon ou d'une autre
 function Plus.Available()
     return Plus.BundledActive() or type(rawget(_G, "ForeverDungeonJournal_Toggle")) == "function"
@@ -563,7 +631,11 @@ function Plus.Toggle()
     if not (d and not d.PpStandby) then
         -- pas de journal intégré actif : l'addon séparé, s'il est là
         local standalone = rawget(_G, "ForeverDungeonJournal_Toggle")
-        if type(standalone) == "function" then return standalone() end
+        if type(standalone) == "function" then
+            standalone()
+            if Plus.BuiltCheck then Plus.BuiltCheck() end   -- (fenêtre construite seulement maintenant ? on s'y branche)
+            return
+        end
     end
     local toggle = rawget(_G, "PlatyplusDungeon_Toggle")
     if type(toggle) == "function" then return toggle() end
@@ -579,12 +651,12 @@ function Plus.Open(name)
     local f = journal()
     if not (f and D and D.DB and D.DB[name]) then return Plus.Toggle() end
     if not f:IsShown() then f:Show() end
-    call("PpSelectDungeon", name)
+    selectDungeon(name)
 end
 
 -- les réglages du journal lui-même (sa fenêtre d'options, comme /dj options)
 function Plus.OpenOptions()
-    local fn = D and not D.PpStandby and D.ToggleSettingsPanel
+    local fn = D and (external or not D.PpStandby) and D.ToggleSettingsPanel
     if type(fn) ~= "function" then return false end
     local ok, err = pcall(fn)
     if not ok then geterrorhandler()(err) end
@@ -593,6 +665,30 @@ end
 
 function Plus:Status()
     local lines = {}
+    if external then
+        -- surcharge : l'addon d'Exehn, avec les ajouts de Platyplus
+        local version = Plus.StandaloneVersion()
+        lines[1] = ns.Tf("journal des donjons : l'addon DungeonJournal d'Exehn (version %s), installé à part ; Platyplus y ajoute sa liste, « À ton niveau » et son style (/dj ou /pp donjons)", version)
+        if not Plus.Verified(version) then
+            lines[#lines + 1] = ns.Tf("version %s de l'addon : pas encore vérifiée avec Platyplus (vérifiées : %s)",
+                version, table.concat(Plus.VERIFIED, ", "))
+        end
+        if not Plus.attached then
+            lines[#lines + 1] = ns.T("fenêtre du journal pas encore trouvée : les ajouts de Platyplus attendent, le journal garde son look")
+        else
+            local missing = Plus.Health()
+            if #missing > 0 then lines[#lines + 1] = Plus.HealthText(missing) end
+        end
+        if ns.DungeonSkin and ns.DungeonSkin.Status then lines[#lines + 1] = ns.DungeonSkin:Status() end
+        local cost = ns.DungeonSkin and ns.DungeonSkin.StatusCost and ns.DungeonSkin:StatusCost()
+        if cost then lines[#lines + 1] = cost end
+        lines[#lines + 1] = ns.Tf("liste des donjons à gauche : %s ; « À ton niveau » sur l'accueil : %s",
+            ns.T(ns.db.dungeonList ~= false and "allumée" or "éteinte"), ns.T(ns.db.dungeonFit ~= false and "allumé" or "éteint"))
+        if ns.Dungeon and ns.Dungeon.PpStandby then
+            lines[#lines + 1] = ns.T("le journal intégré à Platyplus est en veille tant que l'addon séparé est activé ; il garde une copie de ses réglages, favoris et progression.")
+        end
+        return lines
+    end
     if not D then
         if Plus.Standalone() then
             return { ns.T("journal des donjons : celui de l'addon DungeonJournal d'Exehn, installé à part (/dj ou /pp donjons). Le journal intégré n'est pas inclus dans cette version de Platyplus.") }
@@ -610,10 +706,185 @@ function Plus:Status()
     return lines
 end
 
+---------------------------------------------------------------------------
+-- Surcharge : l'addon DungeonJournal d'Exehn installé à part (ForeverDungeonJournal)
+---------------------------------------------------------------------------
+-- Ce qu'il expose : son espace de noms (_G.ForeverDungeonJournal_NS : données DB / ORDER, fonctions FDJ.*), sa
+-- fenêtre (_G.ForeverDungeonJournalFrame, construite à PLAYER_LOGIN ; champs currentView, homePanel, contentPanel,
+-- homeCardsContent, homeScroll, backButton, dungeonTitle) et ses réglages (ForeverDungeonJournalDB.lastMode).
+-- Vérifié sur ses versions 1.6.6, 2.0.1 et 2.0.6. Tout est gardé : un champ ou une fonction qui manque dans une version
+-- future, et la partie concernée ne se fait pas, sans message.
+
+-- son espace de noms, s'il a bien ses données
+function Plus.StandaloneNS()
+    local X = rawget(_G, EXT_NS)
+    if type(X) == "table" and type(X.DB) == "table" and type(X.ORDER) == "table" then return X end
+    return nil
+end
+
+-- sa version (« ? » si le jeu ne la donne pas)
+function Plus.StandaloneVersion()
+    local meta = C_AddOns and C_AddOns.GetAddOnMetadata
+    if type(meta) == "function" then
+        local ok, v = pcall(meta, "ForeverDungeonJournal", "Version")
+        if ok and type(v) == "string" and v ~= "" then return v end
+    end
+    return "?"
+end
+
+-- Ce dont la surcharge se sert chez lui : des noms internes de son addon, pas une interface prévue pour ça. Une
+-- mise à jour peut en retirer ; la partie concernée ne se fait alors plus, sans erreur. Pour que ce ne soit pas
+-- silencieux : Plus.Health() dit ce qui manque (/pp donjons etat, onglet Donjons, une ligne dans le chat à la
+-- première ouverture du journal), et dev/test_surcharge_reel.lua le vérifie sur l'addon installé.
+-- Versions de l'addon sur lesquelles la surcharge a été vérifiée (à compléter après chaque test_surcharge_reel).
+Plus.VERIFIED = { "1.6.6", "2.0.1", "2.0.6" }
+local CONTRACT_NS = { "HiddenDungeons", "IsDungeonLocked", "IsQuestFinished", "LocalizeDungeonName", "GetSelectedDungeon",
+    "RefreshHomeCards", "UpdateRPGHeader", "OpenBossPage", "OpenQuestPage", "ToggleSettingsPanel" }
+local CONTRACT_FRAME = { "homePanel", "contentPanel", "homeCardsContent", "homeScroll", "backButton", "closeButton",
+    "dungeonTitle", "questContent", "selectedQuestMeta", "questObjectiveHeader" }
+
+function Plus.Verified(version)
+    for _, v in ipairs(Plus.VERIFIED) do
+        if v == version then return true end
+    end
+    return false
+end
+
+-- noms que Platyplus ne trouve plus chez l'addon (vide : tout est là, ou pas de surcharge)
+function Plus.Health()
+    local missing = {}
+    if not external then return missing end
+    local f = journal()
+    if type(f) ~= "table" then
+        missing[1] = EXT_FRAME
+        return missing
+    end
+    if type(D.THEMES) ~= "table" then missing[#missing + 1] = "FDJ.THEMES" end
+    for _, name in ipairs(CONTRACT_NS) do
+        if type(D[name]) ~= "function" then missing[#missing + 1] = "FDJ." .. name end
+    end
+    for _, key in ipairs(CONTRACT_FRAME) do
+        if f[key] == nil then missing[#missing + 1] = key end
+    end
+    return missing
+end
+
+function Plus.HealthText(missing)
+    return ns.Tf("surcharge incomplète : l'addon DungeonJournal a changé et Platyplus n'y trouve plus %s ; une partie de ses ajouts ne s'affiche pas",
+        table.concat(missing, ", "))
+end
+
+-- une seule ligne dans le chat, à la première ouverture du journal de la session, si quelque chose manque
+local noticed = false
+local function notice()
+    if noticed or not external then return end
+    if Plus.attached and #Plus.Health() == 0 then return end
+    noticed = true
+    ns:Print(ns.T("le journal des donjons a changé : une partie des ajouts de Platyplus ne s'y affiche plus (détail : /pp donjons etat)."))
+end
+
+-- une erreur dans NOTRE code derrière le sien ne remonte pas au joueur (/pp debug pour la voir)
+local function quiet(fn)
+    return function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok then ns:Debug("journal des donjons (surcharge) : " .. tostring(err)) end
+    end
+end
+Plus.Quiet = quiet
+
+-- hooksecurefunc gardé sur une fonction de l'addon (tbl[name]) : faux si elle n'existe pas (ou plus)
+function Plus.Hook(tbl, name, fn)
+    local hook = rawget(_G, "hooksecurefunc")
+    if type(hook) ~= "function" or type(tbl) ~= "table" or type(tbl[name]) ~= "function" then return false end
+    return (pcall(hook, tbl, name, quiet(fn)))
+end
+
+function Plus.HookScript(frame, script, fn)
+    if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return false end
+    return (pcall(frame.HookScript, frame, script, quiet(fn)))
+end
+
+-- fn(fenêtre) dès que la fenêtre de l'addon existe : il la construit à PLAYER_LOGIN (avant ou après nous, selon
+-- l'ordre des cadres), on regarde donc à la connexion, à l'image suivante, puis à chaque ouverture
+local builtWaiting, builtWatch = {}, nil
+local function builtCheck()
+    if #builtWaiting == 0 then return true end
+    local f = rawget(_G, EXT_FRAME)
+    if type(f) ~= "table" then return false end
+    local list = builtWaiting
+    builtWaiting = {}
+    for _, fn in ipairs(list) do quiet(fn)(f) end
+    return true
+end
+Plus.BuiltCheck = builtCheck
+
+function Plus.WhenBuilt(fn)
+    builtWaiting[#builtWaiting + 1] = fn
+    if builtCheck() or builtWatch then return end
+    builtWatch = CreateFrame("Frame")
+    local function later(delay)
+        if C_Timer and C_Timer.After then C_Timer.After(delay, builtCheck) end
+    end
+    for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD" }) do pcall(builtWatch.RegisterEvent, builtWatch, e) end
+    builtWatch:SetScript("OnEvent", function(self)
+        if builtCheck() then self:UnregisterAllEvents() return end
+        later(0)
+        later(2)
+    end)
+    -- (ouvert sans que sa fenêtre ait été trouvée : elle a changé de nom, on le dit une fois)
+    Plus.Hook(_G, "ForeverDungeonJournal_Toggle", function()
+        builtCheck()
+        if not Plus.attached then notice() end
+    end)
+end
+
+-- l'accueil vient d'être redessiné (FDJ.UpdateRPGHeader est son dernier geste) : ses cartes sont les enfants de
+-- homeCardsContent, dans l'ordre de l'accueil
+local function externalAfterHome()
+    local f = journal()
+    local content = f and f.homeCardsContent
+    if not (content and content.GetChildren) or f.currentView ~= "home" then return end
+    local cards = {}
+    for _, card in ipairs({ content:GetChildren() }) do
+        if type(card) == "table" and card.dungeonName then cards[#cards + 1] = card end
+    end
+    Plus.AfterHome(cards)
+end
+
+local function attachExternal(f)
+    if Plus.attached then return end
+    Plus.attached = true
+    local changed = function() Plus.ViewChanged() end
+    -- changement de page : sa fenêtre et ses deux pages se montrent ; changement de donjon : le titre du donjon
+    -- est réécrit, et (2.0) les flèches « donjon précédent / suivant » sont mises à jour
+    Plus.HookScript(f, "OnShow", changed)
+    Plus.HookScript(f, "OnShow", notice)
+    Plus.HookScript(f.homePanel, "OnShow", changed)
+    Plus.HookScript(f.contentPanel, "OnShow", changed)
+    Plus.Hook(f.dungeonTitle, "SetText", changed)
+    Plus.Hook(D, "UpdateDungeonArrows", changed)
+    Plus.Hook(D, "UpdateRPGHeader", externalAfterHome)
+    if f.IsShown and f:IsShown() then
+        Plus.ViewChanged()
+        externalAfterHome()
+    end
+end
+
 function Plus:Init()
-    D = ns.Dungeon
-    if not D or D.PpStandby or type(D.DB) ~= "table" then return end
-    D.PpPlus = { ViewChanged = Plus.ViewChanged, AfterHome = Plus.AfterHome }
+    local own = ns.Dungeon
+    if own and not own.PpStandby then
+        -- journal intégré : il prévient par les points d'accroche de DungeonJournalGlue.lua
+        D = own
+        if type(D.DB) ~= "table" then return end
+        D.PpPlus = { ViewChanged = Plus.ViewChanged, AfterHome = Plus.AfterHome }
+    else
+        -- pas de journal intégré actif : l'addon d'Exehn installé à part, s'il est chargé
+        D = own
+        local X = Plus.Standalone() and Plus.StandaloneNS() or nil
+        if not X then return end
+        D, external = X, true
+        Plus.WhenBuilt(attachExternal)
+    end
     ns:OnChange("dungeonList", function() Plus.ViewChanged() end)
     ns:OnChange("dungeonFit", function()
         scrolledHome = true

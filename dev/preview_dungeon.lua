@@ -31,7 +31,7 @@ return function(M, def, opts)
         local cur = f
         while cur do
             local n = S(cur).name
-            if type(n) == "string" and n:find("^PlatyplusDungeon") then return true end
+            if type(n) == "string" and (n:find("^PlatyplusDungeon") or n:find("^ForeverDungeonJournal")) then return true end
             cur = S(cur).parent
         end
         return opts.drawAll == true
@@ -39,6 +39,7 @@ return function(M, def, opts)
     M.impl.SetBackdrop = function(f, bd)
         local s = S(f)
         s.backdropInfo = bd
+        rawset(f, "backdropInfo", bd)   -- (champ lu par la surcharge de l'addon séparé, comme en jeu)
         if not bd then
             if s.bdBg then s.bdBg:Hide(); for _, e in ipairs(s.bdEdges) do e:Hide() end end
             return
@@ -86,6 +87,16 @@ return function(M, def, opts)
     M.impl.GetBackdropColor = function(f) local c = S(f).backdropColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
     M.impl.GetBackdropBorderColor = function(f) local c = S(f).backdropBorderColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
     M.impl.GetBackdrop = function(f) return S(f).backdropInfo end
+    -- BackdropTemplateMixin:ApplyBackdrop : redessine le fond d'après backdropInfo (couleurs remises à blanc)
+    M.impl.ApplyBackdrop = function(f)
+        local bd = S(f).backdropInfo
+        if bd then M.impl.SetBackdrop(f, bd) end
+    end
+    -- chemin de l'image d'une texture (nil pour un aplat)
+    M.impl.GetTextureFilePath = function(t)
+        local file = S(t).texture
+        if type(file) == "string" and file ~= "color" and file:sub(1, 6) ~= "atlas:" then return file end
+    end
     -- la surbrillance d'un bouton : une vraie texture (le journal la règle après SetHighlightTexture)
     M.impl.SetHighlightTexture = function(f, file, blend)
         local s = S(f)

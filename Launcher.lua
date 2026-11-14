@@ -90,8 +90,8 @@ local MENU_ENTRIES = {
     { "instantLoot",    "Loot instantané" },
     { "sellJunk",       "Vente auto" },
     { "autoQuest",      "Quêtes auto" },
-    { "hud",            "Barre de ressource" },
     { "floatLoot",      "Flux de butin" },
+    { "procAlert",      "Alerte de proc" },
     { "dock",           "Barre d'infos" },
     { "launcherLocked", "Verrouiller l'icône" },
 }

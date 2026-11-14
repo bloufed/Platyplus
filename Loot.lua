@@ -11,13 +11,23 @@ local SlotType = Enum and Enum.LootSlotType or { None = 0, Item = 1, Money = 2, 
 local looting, startedAt = false, 0
 local snapshot = {}   -- [slot] = infos lues AVANT le ramassage
 
--- autoLootDefault = 1 évite que la fenêtre de loot s'affiche et clignote
+-- autoLootDefault = 1 évite que la fenêtre de loot s'affiche et clignote. La valeur d'origine est gardée une fois
+-- (ns.db.cvarBackup, comme les réglages du jeu) et remise quand on coupe le loot instantané.
 function Loot:EnsureAutoLoot()
-    if not ns.db.instantLoot then return end
     local ok, current = pcall(GetCVar, "autoLootDefault")
-    if ok and current ~= nil and current ~= "1" then
-        pcall(SetCVar, "autoLootDefault", "1")
-        ns:Debug("autoLootDefault -> 1")
+    if not ok or current == nil then return end
+    if type(ns.db.cvarBackup) ~= "table" then ns.db.cvarBackup = {} end
+    local backup = ns.db.cvarBackup
+    if ns.db.instantLoot then
+        if current ~= "1" then
+            if backup.autoLootDefault == nil then backup.autoLootDefault = current end
+            pcall(SetCVar, "autoLootDefault", "1")
+            ns:Debug("autoLootDefault -> 1")
+        end
+    elseif backup.autoLootDefault ~= nil then
+        pcall(SetCVar, "autoLootDefault", backup.autoLootDefault)
+        ns:Debug("autoLootDefault ->", backup.autoLootDefault, "(valeur d'origine)")
+        backup.autoLootDefault = nil
     end
 end
 
