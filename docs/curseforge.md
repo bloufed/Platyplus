@@ -1,7 +1,10 @@
 <!--
   Description du projet CurseForge (à coller dans l'éditeur en mode Markdown).
+  Nom de la page (champ « Project name » ; le nom en jeu reste « Platyplus ») :
+  Platyplus - Interact Key, Threat Meter, Auto Loot & QoL
+  (la recherche CurseForge ne lit que le nom et le résumé : garder les mots-clés dedans)
   Résumé (champ « Summary », 1 ligne) :
-  A dozen quality-of-life addons in one platypus for WoW Forever: one key that does everything, readable threat, cleaner windows.
+  One key to interact, loot, gather and turn in quests, plus threat meter, threat nameplates, proc alerts, auto loot, auto sell and bigger quest and bag windows. A dozen quality of life addons in one platypus.
   Images : captures EN JEU seulement.
 -->
 
