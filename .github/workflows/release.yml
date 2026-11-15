@@ -1,6 +1,7 @@
 # Publier une version : pousser un tag « v0.3.0 ».
 # L'archive Platyplus-<tag>-forever.zip est attachée à la release GitHub, puis envoyée sur CurseForge
-# si le secret CF_API_KEY existe et si Platyplus.toc contient « ## X-Curse-Project-ID ». Sans eux : GitHub seul.
+# si le secret CF_API_KEY existe et si Platyplus.toc contient « ## X-Curse-Project-ID », et sur Wago Addons
+# si le secret WAGO_API_TOKEN existe et si le .toc contient « ## X-Wago-ID ». Sans eux : GitHub seul.
 name: Release
 
 on:
@@ -16,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
       GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
