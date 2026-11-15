@@ -5,13 +5,13 @@
 <h1 align="center">Platyplus</h1>
 
 <p align="center">
-  <b>All-in-one quality of life for WoW Forever.</b><br>
-  One key that does almost everything, combat alerts and threat you can read at a glance, loot and selling without
-  clicks, and cleaner windows — in a single addon.
+  <b>Press F. That's most of the addon.</b> (The rest is pretty cool too.)<br>
+  A dozen quality-of-life addons in one platypus, for WoW Forever.
 </p>
 
 <p align="center">
   <a href="README.fr.md">Français</a> ·
+  <a href="https://www.curseforge.com/wow/addons/platyplus">CurseForge</a> ·
   <a href="https://github.com/bloufed/Platyplus/releases/latest">Download</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="https://github.com/bloufed/Platyplus/issues">Report a bug</a>
@@ -19,41 +19,79 @@
 
 ---
 
-Platyplus started as a single shortcut I wanted while leveling my warrior on **WoW Forever**, and it kept growing
-through the whole adventure: every time something in the game felt slow, noisy or hard to read, it became a new
-module. Today it replaces a dozen small addons with one, with a single options window and one look.
+The platypus is a duck, a beaver and an otter that agreed to share one body. Platyplus does the same with your
+AddOns folder: a dozen small quality-of-life addons, one install, one settings window, one look.
 
-The useful features are on from the start, so you can just play. Prefer another starting point? Pick a ready-made
-mode (**Recommended**, **Complete**, **Immersive** or **Minimal**) and every feature is set in one click. Each one
-still has its own switch in `/pp`, and a short guided tour on your first login shows what each feature does.
+It was born on **WoW Forever**, while leveling a warrior who was tired of clicking on things. Written for the
+Forever client (1.60) and its restrictions, not ported from somewhere else.
 
-![The options window](docs/images/options-key.jpg)
+![Platyplus in game: the options window](docs/images/options-key.jpg)
 
-> The options window, the proc alert and the info bar are in-game screenshots. The other images are still rendered
-> by the addon's offline simulator (item and spell icons are placeholders); more screenshots are coming.
+## One key
 
-## Why Platyplus
+Point at something (or don't: it picks the nearest thing) and press `F`:
 
-- **One addon instead of twelve.** Interaction, loot, selling, combat alerts, nameplates, threat, procs, chat, bags,
-  character sheet: one install, one settings window, one consistent style.
-- **One key that does everything.** Press `F` (or any key you choose) to talk, loot, gather, skin, accept and turn
-  in quests, and use the quest item where it belongs.
-- **Threat you can actually read.** Nameplates colored by threat, plus a threat window listing every mob you are
-  fighting and who holds it.
-- **Windows redone.** Quests, bags, character, chat and loot rolls in large, clean windows drawn from scratch.
-- **Built for Forever.** Written against the Forever client (1.60) and its secret-value restrictions, not ported
-  from another game version.
-- **7 languages.** Français, English, Deutsch, Español, Italiano, Português (BR), Русский.
+- talk to NPCs, loot chests and corpses, gather herbs and ore, skin;
+- go through dialogs, accept quests, turn them in (and pick the first dialog option, if you want);
+- use the quest item where the quest wants it (hold Shift to interact normally instead).
+
+Two more keys **eat** and **drink** the best food in your bags, or a potion in combat. Your mouse can finally
+retire. Press F to pay respects.
+
+## Combat
+
+- **Proc alerts**: the ability that just lit up (Overpower, Revenge, Victory Rush...) pops up with its icon and the
+  key to press. Works for every class (glowing spells for casters, plus any spell you add); choose how many, with or
+  without sound.
+- **Threat window**: one line per mob you are fighting, with its health, who it is hitting and your threat. Hover a
+  line to spot its nameplate. Now you know who pulled before the healer tells you.
+- **Threat nameplates**, in the spirit of Threat Plates: tank or damage colors, quest progress right on the plate
+  (3/8 boars), rare / elite / boss tags, and cast bars that tell you when your interrupt is ready. Presets, live
+  preview, and every color is yours to change.
+- **Swing timer**: a bar that fills up until your next auto attack, to time Heroic Strike and friends.
+- **Mob control tooltips**: hover a mob to see if it stuns, roots, slows or fears, and for how long. Find out which
+  one will fear you into the next pack *before* you pull it.
+- **Buff reminders** (Battle Shout and friends), the buffs you can give to your group, and a right-click "ask for a
+  buff" that whispers politely for you.
+- **Healer mana bar**: your healer's mana, always in sight.
+
+## Loot and gold
+
+- **Instant loot**, and **sparkles** on the herbs, ore, corpses and quest items you can pick up.
+- **Floating loot feed**: what you just got, where you can see it, including what you bought, crafted, sold and
+  received from quests.
+- **Loot roll tracker**: every item, every roll, who won, plus a `/roll` tab. Settles "wait, who won that?" for good.
+- **Auto-sell** greys and gear you can't use, with never-sell / always-sell lists and a preview before anything
+  goes. **Auto-repair** too.
+- **Auction house helper**: scan your bags, post in a few clicks, prices remembered per realm and faction, and what
+  your recipes cost to craft.
+
+## Windows
+
+- **Quest and dialog window** in large type, with **reward cards** that highlight the best pick for you.
+- **One bag window** for all your bags, with sorting.
+- **Character window** with reputation, skills, PvP and currencies, item level and durability.
+- **Chat** with tabs, spam filters, copyable links, and a history that survives a `/reload`.
+
+## Comfort
+
+- Accepts or declines group invites, duels and summons for you (your call); quieter error messages.
+- Recommended **game settings** in one click.
+- A small platypus icon with an info bar: FPS, latency, gold, bags, durability, item level and XP. Click the XP to
+  switch between %, XP per hour, time to level and mobs to level.
+
+![The info bar, in game](docs/images/launcher.png)
+
+Every feature has its own switch. Don't like our quest window? Turn it off. The platypus doesn't hold grudges.
 
 ## Getting started
 
-1. **Install.** Download the latest zip from [Releases](https://github.com/bloufed/Platyplus/releases/latest)
-   (or from CurseForge) and extract it so that you get
+1. **Install.** From [CurseForge](https://www.curseforge.com/wow/addons/platyplus), or download the latest zip
+   from [Releases](https://github.com/bloufed/Platyplus/releases/latest) and extract it so that you get
    `World of Warcraft\_forever_\Interface\AddOns\Platyplus\Platyplus.toc`. Restart the game.
 2. **The guided tour.** On your first login, a short tour opens, in English. **Pick your language at the top of its
-   first page** (Français, Deutsch, Español, Italiano, Português, Русский): the tour switches right away. Then: one welcome page, then one small page per big
-   feature (the key, combat, threat, loot, selling, windows, the icon), each with its main switches. Skip it or come
-   back to it any time with `/pp bienvenue` (or `/pp tuto`).
+   first page** (Français, Deutsch, Español, Italiano, Português, Русский): the tour switches right away. Then one
+   small page per big feature, each with its main switches. Replay it any time with `/pp bienvenue` (or `/pp tuto`).
 3. **Pick a mode.** The tour's second page (and the **Modes** tab of `/pp`) offers four starting points. One click
    sets every feature; then change whatever you like. Hover a mode to see exactly what it changes.
    - **Recommended** (the default): the useful features on, nothing that decides for you.
@@ -64,77 +102,9 @@ still has its own switch in `/pp`, and a short guided tour on your first login s
    - **Minimal**: everything off except the icon; turn on only what you want.
 
    A mode never touches your key, your lists, positions, sizes or colors. `/pp mode complete` works too.
-4. **The options.** Type `/pp`, or left-click the Platyplus icon on your screen. Tabs are on the left; hover any
-   setting to read what it does. Right-click the icon for a quick on/off menu.
+4. **The options.** Type `/pp`, or left-click the Platyplus icon. Tabs are on the left; hover any setting to read
+   what it does. Right-click the icon for a quick on/off menu.
 5. **Lost?** `/pp help` lists every command in the chat.
-
-![The guided tour](docs/images/tour.jpg)
-
-## Features
-
-### The key
-
-- One key to interact with what you point at, or the nearest thing: NPCs, chests, herbs, corpses to skin.
-- The same key advances dialogs, accepts quests and turns them in, and can pick the first dialog option.
-- Uses the quest item at the right place (hold Shift to interact normally instead).
-- Two more keys to **eat** and **drink**: the best food or drink in your bags out of combat, a potion in combat.
-
-### Combat
-
-![Proc alert in game: the ability and its key](docs/images/procs.png)
-
-![Proc alert, loot feed and swing timer](docs/images/hud.jpg)
-
-- **Proc alerts**: the ability that just became usable pops up with its icon and its keybind (Overpower, Revenge,
-  Execute, Riposte, Counterattack and the like, glowing spells for casters, plus any spell you add).
-- **Swing timer**: a bar that fills up until your next auto attack, to time Heroic Strike and friends.
-- **Threat window**: one line per mob in combat — health, who it is attacking, your threat percentage.
-- **Threat nameplates** in the spirit of Threat Plates: tank or damage colors, quest progress, rare / elite / boss
-  tags, cast bars that tell you when your interrupt is ready. Presets, rounded bars, live preview.
-- **Buff reminders** (Battle Shout and friends), the buffs you can give to allies, and "ask for a buff" in the
-  right-click menu of a player.
-- **Healer mana bar** for your group, and **mob control tooltips**: which stuns, roots, slows and fears a mob has,
-  and how long they last.
-
-| Threat window | Threat nameplates |
-|---|---|
-| ![Threat window](docs/images/threat.jpg) | ![Nameplate options with live preview](docs/images/options-plates.jpg) |
-
-### Loot and gold
-
-- **Instant loot**, sparkles on what you can pick up (herbs, quest objects, corpses with loot), and a floating
-  **loot feed** that also shows what you bought, crafted, sold and received from quests.
-- **Loot roll tracker**: every item, every player, who needs, who greeds, who won — plus a `/roll` tab.
-- **Auto-sell** grey items and unusable gear, with "never sell" / "always sell" lists and a preview before anything
-  is sold. Auto-repair.
-- **Auction house helper**: scan your bags, post in a few clicks, remember prices per realm and faction, and see
-  what a recipe costs against the auction house.
-
-![Loot rolls](docs/images/loot-rolls.jpg)
-
-### Windows
-
-- **Quest and dialog window** in large type, with big **reward cards** that highlight the best choice for you.
-- **One bag window** for all your bags, with sorting.
-- **Character window** with reputation, skills, PvP and currency tabs, item level and durability.
-- **Chat**: a cleaner chat window with tabs, spam filters, history that survives a reload, and copyable links.
-
-| Reward cards | Quest window |
-|---|---|
-| ![Reward cards](docs/images/reward-cards.jpg) | ![Quest window](docs/images/quest-window.jpg) |
-
-| Character | Chat |
-|---|---|
-| ![Character window](docs/images/character.jpg) | ![Chat window](docs/images/chat.jpg) |
-
-### Comfort
-
-- Accept or decline group invites, duels and summons for you; quieter error messages.
-- A small **launcher icon** with an info bar: FPS, latency, gold, bag space, durability, item level, XP and XP per
-  hour — placed wherever you like.
-- Recommended **game settings** in one click.
-
-![The launcher icon and its info bar](docs/images/launcher.png)
 
 ## Commands
 

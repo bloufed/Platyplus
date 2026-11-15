@@ -5,13 +5,13 @@
 <h1 align="center">Platyplus</h1>
 
 <p align="center">
-  <b>Le confort tout-en-un pour WoW Forever.</b><br>
-  Une touche qui fait presque tout, des alertes de combat et une menace lisibles d'un coup d'œil, le butin et la
-  vente sans clics, et des fenêtres refaites — dans un seul addon.
+  <b>Appuie sur F. C'est à peu près tout l'addon.</b> (Le reste est pas mal non plus.)<br>
+  Une douzaine d'addons de confort dans un seul ornithorynque, pour WoW Forever.
 </p>
 
 <p align="center">
   <a href="README.md">English</a> ·
+  <a href="https://www.curseforge.com/wow/addons/platyplus">CurseForge</a> ·
   <a href="https://github.com/bloufed/Platyplus/releases/latest">Télécharger</a> ·
   <a href="CHANGELOG.md">Nouveautés</a> ·
   <a href="https://github.com/bloufed/Platyplus/issues">Signaler un bug</a>
@@ -19,45 +19,85 @@
 
 ---
 
-Platyplus est né d'un simple raccourci que je voulais en montant mon guerrier sur **WoW Forever**, et il a grandi
-tout au long de l'aventure : chaque fois qu'un détail du jeu me paraissait lent, bruyant ou illisible, il est devenu
-un nouveau module. Aujourd'hui il remplace une douzaine de petits addons par un seul, avec une seule fenêtre
-d'options et un seul style.
+L'ornithorynque, c'est un canard, un castor et une loutre qui ont accepté de partager le même corps. Platyplus fait
+pareil avec ton dossier AddOns : une douzaine de petits addons de confort, une seule installation, une seule fenêtre
+de réglages, un seul style.
 
-Les fonctions utiles sont allumées dès le départ : tu peux jouer tout de suite. Tu préfères une autre base ? Choisis
-un mode prêt à l'emploi (**Recommandé**, **Complet**, **Immersif** ou **Minimal**) et toutes les fonctions se règlent
-en un clic. Chacune garde son interrupteur dans `/pp`, et une courte visite guidée, à ta première connexion, montre ce
-que fait chaque fonction.
+Il est né sur **WoW Forever**, en montant un guerrier qui en avait assez de cliquer sur tout. Écrit pour le client
+Forever (1.60) et ses restrictions, pas porté d'ailleurs.
 
-![La fenêtre d'options](docs/images/options-key.jpg)
+![Platyplus en jeu : la fenêtre d'options](docs/images/options-key.jpg)
 
-> La fenêtre d'options, l'alerte de proc et la barre d'infos sont des captures en jeu. Les autres images sont encore
-> rendues par le simulateur hors jeu de l'addon (les icônes d'objets et de sorts sont des pastilles) ; d'autres
-> captures arrivent.
+## Une touche
 
-## Pourquoi Platyplus
+Vise quelque chose (ou pas : il prend ce qui est le plus proche) et appuie sur `F` :
 
-- **Un addon au lieu de douze.** Interaction, butin, vente, alertes de combat, plates, menace, procs, chat, sacs, fiche de
-  personnage : une installation, une fenêtre de réglages, un style cohérent.
-- **Une touche qui fait tout.** Appuie sur `F` (ou la touche de ton choix) pour parler, ramasser, cueillir,
-  dépecer, prendre et rendre les quêtes, et utiliser l'objet de quête au bon endroit.
-- **Une menace vraiment lisible.** Des plates colorées selon la menace, et une fenêtre qui liste chaque mob en
-  combat et qui le tient.
-- **Des fenêtres refaites.** Quêtes, sacs, personnage, chat et jets de butin dans de grandes fenêtres claires,
-  dessinées de zéro.
-- **Fait pour Forever.** Écrit pour le client Forever (1.60) et ses valeurs secrètes, pas porté d'une autre
-  version du jeu.
-- **7 langues.** Français, English, Deutsch, Español, Italiano, Português (BR), Русский.
+- parler aux PNJ, ramasser coffres et cadavres, cueillir plantes et minerai, dépecer ;
+- faire avancer les dialogues, accepter les quêtes, les rendre (et choisir la première option de dialogue, si tu veux) ;
+- utiliser l'objet de quête là où la quête le veut (Maj + touche pour interagir quand même).
+
+Deux autres touches pour **manger** et **boire** le meilleur de tes sacs, ou une potion en combat. Ta souris peut
+enfin prendre sa retraite.
+
+## Combat
+
+- **Alertes de proc** : le sort qui vient de s'allumer (Fulgurance, Vengeance, Ivresse de la victoire...) s'affiche
+  avec son icône et la touche à presser. Toutes les classes (les sorts qui brillent pour les lanceurs de sorts, et
+  ceux que tu ajoutes) ; tu choisis combien, avec ou sans son.
+- **Fenêtre de menace** : une ligne par mob que tu combats, avec sa vie, qui il tape et ta menace. Survole une ligne
+  pour repérer sa plate. Tu sais qui a pull avant que le healer te le dise.
+- **Plates de menace**, dans l'esprit de Threat Plates : couleurs tank ou dégâts, avancée des quêtes sur la plate
+  (3/8 sangliers), étiquettes rare / élite / boss, et barres d'incantation qui te disent quand ton interruption est
+  prête. Préréglages, aperçu en direct, et toutes les couleurs sont à toi.
+- **Barre de coups blancs** : elle se remplit jusqu'à ta prochaine attaque automatique, pour placer Frappe héroïque
+  au bon moment.
+- **Contrôles des mobs dans l'infobulle** : survole un mob pour savoir s'il étourdit, immobilise, ralentit ou fait
+  peur, et combien de temps. Repère celui qui va te faire fuir dans le pack d'à côté *avant* de le pull.
+- **Rappels de buffs** (Cri de guerre et compagnie), les buffs que tu peux offrir au groupe, et « Demander un buff »
+  au clic droit, qui chuchote poliment à ta place.
+- **Barre de mana du healer** : la mana de ton healer, toujours sous les yeux.
+
+## Butin et or
+
+- **Butin instantané**, et **étincelles** sur les plantes, le minerai, les cadavres et les objets de quête à ramasser.
+- **Flux de butin** flottant : ce que tu viens d'obtenir, là où tu le vois, y compris ce que tu achètes, fabriques,
+  vends et reçois des quêtes.
+- **Suivi des jets de butin** : chaque objet, chaque jet, qui a gagné, et un onglet `/roll`. Fini les « attends,
+  qui a gagné ça ? ».
+- **Vente automatique** des gris et de l'équipement inutilisable, avec des listes « jamais vendre » / « toujours
+  vendre » et un aperçu avant toute vente. **Réparation automatique** aussi.
+- **Aide à l'hôtel des ventes** : scan des sacs, mise en vente en quelques clics, prix retenus par royaume et
+  faction, et ce que coûtent tes recettes.
+
+## Fenêtres
+
+- **Fenêtre de quête et de dialogue** en grand, avec des **cartes de récompense** qui mettent en avant le meilleur
+  choix pour toi.
+- **Une seule fenêtre de sacs** pour tous tes sacs, avec tri.
+- **Fenêtre du personnage** avec réputation, compétences, JcJ et monnaies, niveau d'objet et durabilité.
+- **Chat** à onglets, avec filtres anti-spam, liens copiables, et un historique qui survit à un `/reload`.
+
+## Confort
+
+- Invitations de groupe, duels et invocations acceptés ou refusés pour toi (c'est toi qui choisis) ; des messages
+  d'erreur plus discrets.
+- Les **réglages du jeu** recommandés, en un clic.
+- Une petite icône ornithorynque avec sa barre d'infos : FPS, latence, or, sacs, durabilité, niveau d'objet et XP.
+  Clic sur l'XP pour passer du % à l'XP par heure, au temps avant le niveau et aux mobs avant le niveau.
+
+![La barre d'infos, en jeu](docs/images/launcher.png)
+
+Chaque fonction a son interrupteur. Tu n'aimes pas notre fenêtre de quête ? Coupe-la. L'ornithorynque n'est pas
+rancunier.
 
 ## Premiers pas
 
-1. **Installation.** Télécharge la dernière archive dans [Releases](https://github.com/bloufed/Platyplus/releases/latest)
-   (ou sur CurseForge) et décompresse-la pour obtenir
+1. **Installation.** Sur [CurseForge](https://www.curseforge.com/wow/addons/platyplus), ou télécharge la dernière
+   archive dans [Releases](https://github.com/bloufed/Platyplus/releases/latest) et décompresse-la pour obtenir
    `World of Warcraft\_forever_\Interface\AddOns\Platyplus\Platyplus.toc`. Relance le jeu.
 2. **La visite guidée.** À ta première connexion, une courte visite s'ouvre, en anglais. **Choisis ta langue en haut
-   de sa première page** (Français, Deutsch, Español…) : la visite change tout de suite. Ensuite : une page de bienvenue, puis une petite
-   page par grande fonction (la touche, le combat, la menace, le butin, la vente, les fenêtres, l'icône), chacune
-   avec ses interrupteurs principaux. Passe-la, ou reviens-y quand tu veux avec `/pp bienvenue` (ou `/pp tuto`).
+   de sa première page** (Français, Deutsch, Español…) : la visite change tout de suite. Ensuite, une petite page par
+   grande fonction, avec ses interrupteurs principaux. Reviens-y quand tu veux avec `/pp bienvenue` (ou `/pp tuto`).
 3. **Choisis un mode.** La 2e page de la visite (et l'onglet **Modes** de `/pp`) propose quatre bases. Un clic règle
    toutes les fonctions ; tu changes ensuite ce que tu veux. Survole un mode pour voir exactement ce qu'il change.
    - **Recommandé** (par défaut) : les fonctions utiles allumées, rien qui décide à ta place.
@@ -69,86 +109,9 @@ que fait chaque fonction.
    - **Minimal** : tout coupé sauf l'icône ; tu allumes seulement ce que tu veux.
 
    Un mode ne touche jamais à ta touche, tes listes, les positions, tailles ou couleurs. `/pp mode complet` marche aussi.
-4. **Les options.** Tape `/pp`, ou clic gauche sur l'icône Platyplus à l'écran. Les onglets sont à gauche ; survole
-   un réglage pour lire ce qu'il fait. Clic droit sur l'icône : un menu rapide pour allumer ou couper les fonctions.
+4. **Les options.** Tape `/pp`, ou clic gauche sur l'icône Platyplus. Les onglets sont à gauche ; survole un réglage
+   pour lire ce qu'il fait. Clic droit sur l'icône : un menu rapide pour allumer ou couper les fonctions.
 5. **Perdu ?** `/pp help` liste toutes les commandes dans le chat.
-
-![La visite guidée](docs/images/tour-fr.jpg)
-
-## Fonctions
-
-### La touche
-
-- Une touche pour interagir avec ce que tu survoles, ou ce qui est le plus proche : PNJ, coffres, plantes,
-  cadavres à dépecer.
-- La même touche fait avancer les dialogues, accepte et rend les quêtes, et peut choisir la première option de
-  dialogue.
-- Elle utilise l'objet de quête au bon endroit (Maj + touche pour interagir quand même).
-- Deux autres touches pour **manger** et **boire** : le meilleur de tes sacs hors combat, une potion en combat.
-
-### Combat
-
-![Alerte de proc en jeu : le sort et sa touche](docs/images/procs.png)
-
-![Alerte de proc, flux de butin et barre de coups blancs](docs/images/hud.jpg)
-
-- **Alertes de proc** : le sort qui vient de devenir utilisable s'affiche avec son icône et sa touche (Fulgurance,
-  Vengeance, Exécution, Riposte, Contre-attaque..., les sorts qui brillent pour les lanceurs de sorts, et ceux que
-  tu ajoutes).
-- **Barre de coups blancs** : elle se remplit jusqu'à ta prochaine attaque automatique, pour placer Frappe
-  héroïque au bon moment.
-- **Fenêtre de menace** : une ligne par mob en combat — sa vie, qui il tape, ton pourcentage de menace.
-- **Plates de menace** dans l'esprit de Threat Plates : couleurs tank ou dégâts, avancée des quêtes, étiquettes
-  rare / élite / boss, barres d'incantation qui te disent quand ton interruption est prête. Préréglages, barres
-  arrondies, aperçu en direct.
-- **Rappels de buffs** (Cri de guerre et compagnie), les buffs que tu peux offrir aux alliés, et « Demander un
-  buff » au clic droit sur un joueur.
-- **Barre de mana du healer** du groupe, et **contrôles des mobs dans l'infobulle** : leurs étourdissements,
-  immobilisations, ralentissements et peurs, avec leur durée.
-
-| Fenêtre de menace | Plates de menace |
-|---|---|
-| ![Fenêtre de menace](docs/images/threat.jpg) | ![Options des plates avec aperçu](docs/images/options-plates.jpg) |
-
-### Butin et or
-
-- **Butin instantané**, étincelles sur ce qui se ramasse (plantes, objets de quête, cadavres avec du butin), et un
-  **flux de butin** flottant qui montre aussi ce que tu achètes, fabriques, vends et reçois des quêtes.
-- **Suivi des jets de butin** : chaque objet, chaque joueur, qui a fait besoin, cupidité, qui a gagné — et un
-  onglet `/roll`.
-- **Vente automatique** des objets gris et de l'équipement inutilisable, avec des listes « jamais vendre » /
-  « toujours vendre » et un aperçu avant toute vente. Réparation automatique.
-- **Aide à l'hôtel des ventes** : scan des sacs, mise en vente en quelques clics, prix retenus par royaume et
-  faction, et coût d'une recette face à l'hôtel des ventes.
-
-![Jets de butin](docs/images/loot-rolls.jpg)
-
-### Fenêtres
-
-- **Fenêtre de quête et de dialogue** en grand, avec de grandes **cartes de récompense** qui mettent en avant le
-  meilleur choix pour toi.
-- **Une seule fenêtre de sacs** pour tous tes sacs, avec tri.
-- **Fenêtre du personnage** avec les onglets réputation, compétences, JcJ et monnaies, niveau d'objet et
-  durabilité.
-- **Chat** : une fenêtre de chat plus propre, à onglets, avec filtres anti-spam, un historique qui survit au
-  rechargement et des liens copiables.
-
-| Cartes de récompense | Fenêtre de quête |
-|---|---|
-| ![Cartes de récompense](docs/images/reward-cards.jpg) | ![Fenêtre de quête](docs/images/quest-window.jpg) |
-
-| Personnage | Chat |
-|---|---|
-| ![Fenêtre du personnage](docs/images/character.jpg) | ![Fenêtre de chat](docs/images/chat.jpg) |
-
-### Confort
-
-- Invitations de groupe, duels et invocations acceptés ou refusés pour toi ; des messages d'erreur plus discrets.
-- Une petite **icône** avec sa barre d'infos : FPS, latence, or, place dans les sacs, durabilité, niveau d'objet,
-  XP et XP par heure — où tu veux à l'écran.
-- Les **réglages du jeu** recommandés, en un clic.
-
-![L'icône et sa barre d'infos](docs/images/launcher.png)
 
 ## Commandes
 
